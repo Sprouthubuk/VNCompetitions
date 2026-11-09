@@ -25,11 +25,23 @@ use RuntimeException;
  * tickets that `sold` and the prize ledger match the design preview.
  *
  * Every number (tickets and prize units) is random, as in production.
- * Comps that already exist (by slug) are skipped, so the seeder can be re-run.
+ *
+ * Runs without dev dependencies (Forge deploys with `composer install --no-dev`):
+ * no factories, no fake(). Safe to re-run: comps are matched by slug with
+ * updateOrCreate, bundles and offers are synced, and tickets, prizes and
+ * orders are only created the first time a comp is seeded. A re-run never
+ * changes an existing comp's status, so admin changes to it are kept.
  */
 class SampleCompetitionSeeder extends Seeder
 {
-    private const CUSTOMERS = 40;
+    /** The sample customers who "bought" the seeded tickets (customer1…customer40@sample.vaultnine.test). */
+    private const CUSTOMER_NAMES = [
+        'Craig Baker', 'Toby Shears', 'McKenzie Vetier', 'Jamie Guest', 'Ben Carter', 'Leigh Picton', 'Dean Bush', 'Robert Pickford',
+        'Sam Holloway', 'Chris Dunmore', 'Gary Whitlock', 'Paul Hensley', 'Mark Ellison', 'Steve Rowntree', 'Lee Marsden', 'Danny Okafor',
+        'Ryan Kettle', 'Josh Tranter', 'Kieran Doyle', 'Adam Pryce', 'Nathan Greaves', 'Luke Ashdown', 'Tom Brannigan', 'Matt Seddon',
+        'Wayne Colley', 'Darren Pugh', 'Karl Ingham', 'Neil Fothergill', 'Jordan Mace', 'Callum Reeve', 'Ashley Booth', 'Shaun Tilley',
+        'Kerry Lomas', 'Gemma Hartley', 'Lisa Cranston', 'Jodie Mercer', 'Hayley Dunn', 'Sophie Rigby', 'Emma Pollard', 'Rachel Stott',
+    ];
 
     /** @var list<string> */
     private array $customers = [];
@@ -42,35 +54,29 @@ class SampleCompetitionSeeder extends Seeder
         $this->customers = $this->sampleCustomers();
 
         foreach ($comps as $sort => $data) {
-            if (Competition::query()->where('slug', $data['slug'])->exists()) {
-                $this->command->line("  skip {$data['slug']} (exists)");
-
-                continue;
-            }
-
-            DB::transaction(fn () => $this->seedCompetition($data, $sort));
-            $this->command->line("  seeded {$data['slug']}");
+            $created = DB::transaction(fn () => $this->seedCompetition($data, $sort));
+            $this->command->line(($created ? '  seeded ' : '  updated ').$data['slug']);
         }
     }
 
     /**
      * @param  array<string, mixed>  $data
+     * @return bool true when the comp was created, false when it already existed
      */
-    private function seedCompetition(array $data, int $sort): void
+    private function seedCompetition(array $data, int $sort): bool
     {
         $was = isset($data['was']) ? self::money($data['was']) : null;
         $current = self::money($data['price']);
         $instant = $data['type'] === 'instant';
+        $isNew = ! Competition::query()->where('slug', $data['slug'])->exists();
 
-        $comp = Competition::create([
-            'slug' => $data['slug'],
+        $details = [
             'title' => $data['title'],
             'brand' => $data['brand'],
             'kind' => $data['kind'],
             'type' => $data['type'],
             'category' => Category::fromLabel($data['category']),
             'description' => $data['description'],
-            'status' => CompetitionStatus::Live,
             'price' => $was ?? $current,
             'sale_price' => $was === null ? null : $current,
             'cash_alternative' => isset($data['cashAlternative']) ? self::money($data['cashAlternative']) : null,
@@ -81,26 +87,46 @@ class SampleCompetitionSeeder extends Seeder
             'sort' => $sort,
             'end_prize' => $data['endPrize'] ?? null,
             'game' => $data['game'] ?? null,
-            'prizes_locked_at' => $instant ? now() : null,
-        ]);
+        ];
 
+        // Status and the prize lock are only set on create; a re-run leaves them alone.
+        $comp = Competition::query()->updateOrCreate(
+            ['slug' => $data['slug']],
+            $isNew ? $details + ['status' => CompetitionStatus::Live, 'prizes_locked_at' => $instant ? now() : null] : $details,
+        );
+
+        // Bundles: matched by ticket count; ones no longer in the sample data are removed.
+        $tickets = [];
         foreach ($data['bundles'] ?? [] as $i => $bundle) {
-            $comp->bundles()->create([
-                'tickets' => $bundle['tickets'],
+            $comp->bundles()->updateOrCreate(['tickets' => $bundle['tickets']], [
                 'price' => self::money($bundle['price']),
                 'tag' => $bundle['tag'] ?? null,
                 'sort' => $i,
             ]);
+            $tickets[] = $bundle['tickets'];
+        }
+        $comp->bundles()->whereNotIn('tickets', $tickets)->delete();
+
+        // Offers: at most one of each kind.
+        $offers = [
+            OfferKind::BuyXGetY->value => isset($data['buyX']) ? ['buy' => $data['buyX']['buy'], 'free' => $data['buyX']['free']] : null,
+            OfferKind::Multiplier->value => isset($data['multiplier']) ? ['from_tickets' => $data['multiplier']['from'], 'times' => $data['multiplier']['times']] : null,
+        ];
+        foreach ($offers as $kind => $values) {
+            if ($values === null) {
+                $comp->offers()->where('kind', $kind)->delete();
+            } else {
+                $comp->offers()->updateOrCreate(['kind' => $kind], $values);
+            }
         }
 
-        if (isset($data['buyX'])) {
-            $comp->offers()->create(['kind' => OfferKind::BuyXGetY, 'buy' => $data['buyX']['buy'], 'free' => $data['buyX']['free']]);
-        }
-        if (isset($data['multiplier'])) {
-            $comp->offers()->create(['kind' => OfferKind::Multiplier, 'from_tickets' => $data['multiplier']['from'], 'times' => $data['multiplier']['times']]);
+        // Prize lines, prize units, orders and tickets only on create: prize numbers are
+        // locked at launch, and re-seeding entries would double the tickets sold.
+        if ($isNew) {
+            $this->seedEntries($comp, $data['sold'], $data['instantPrizes'] ?? []);
         }
 
-        $this->seedEntries($comp, $data['sold'], $data['instantPrizes'] ?? []);
+        return $isNew;
     }
 
     /**
@@ -260,12 +286,24 @@ class SampleCompetitionSeeder extends Seeder
      */
     private function sampleCustomers(): array
     {
-        $password = Hash::make(Str::password(24));
+        $password = Hash::make(Str::password(24)); // nobody can log in as a sample customer
         $ids = [];
-        for ($i = 1; $i <= self::CUSTOMERS; $i++) {
-            $email = "customer{$i}@sample.vaultnine.test";
-            $user = User::query()->where('email', $email)->first()
-                ?? User::factory()->create(['email' => $email, 'password' => $password]);
+        foreach (self::CUSTOMER_NAMES as $i => $name) {
+            $n = $i + 1;
+            $email = "customer{$n}@sample.vaultnine.test";
+            $user = User::query()->where('email', $email)->first();
+
+            if ($user === null) {
+                $user = new User([
+                    'name' => $name,
+                    'email' => $email,
+                    'password' => $password,
+                    'date_of_birth' => CarbonImmutable::create(1960 + ($n * 7) % 40, 1 + $n % 12, 1 + $n % 28),
+                    'country' => 'GB',
+                ]);
+                $user->forceFill(['email_verified_at' => now(), 'age_confirmed_at' => now()])->save();
+            }
+
             $ids[] = $user->id;
         }
 

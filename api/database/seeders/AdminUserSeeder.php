@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 /**
  * The first admin, from ADMIN_NAME / ADMIN_EMAIL / ADMIN_PASSWORD. With no
  * password set, a random one is generated and printed once.
+ *
+ * No factories or fake(): this runs on Forge, where dev dependencies aren't installed.
  */
 class AdminUserSeeder extends Seeder
 {
