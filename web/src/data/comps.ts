@@ -16,6 +16,7 @@ export interface Bundle { tickets: number; price: number; tag?: string; }
 export interface Comp {
   slug: string;
   title: string;
+  status?: 'live' | 'sold_out' | 'closed' | 'drawn'; // from the API; sample data is live
   brand: string;
   kind: PrizeKind;
   type: 'standard' | 'instant';
@@ -211,14 +212,14 @@ export const comps: Comp[] = [
 export const categories: Category[] = ['Instant win', 'Darts', 'Boards', 'Mystery boxes', 'Vouchers'];
 
 export const winners = [
-  { name: 'Craig Baker', prize: 'Star Wars Target Mandalorian 26g', ticket: '#143', date: '08 Nov 2026' },
-  { name: 'Toby Shears', prize: '£150 Harrows mystery box', ticket: '#9', date: '08 Nov 2026' },
-  { name: 'McKenzie Vetier', prize: 'Ryan Searle GEO darts 32g', ticket: '#171', date: '08 Nov 2026' },
-  { name: 'Jamie Guest', prize: 'Target Rove darts 23g', ticket: '#126', date: '08 Nov 2026' },
-  { name: 'Ben Carter', prize: 'Luke Littler Nuke Fallout 24g', ticket: 'live draw', date: '' },
-  { name: 'Leigh Picton', prize: 'Phil Taylor Power Chrono 26g', ticket: 'live draw', date: '' },
-  { name: 'Dean Bush', prize: 'Charlie Manby 25g 95%', ticket: 'live draw', date: '' },
-  { name: 'Robert Pickford', prize: 'Littler Born To Win dartboard', ticket: 'live draw', date: '' },
+  { name: 'Craig B.', prize: 'Star Wars Target Mandalorian 26g', ticket: '#143', date: '08 Nov 2026' },
+  { name: 'Toby S.', prize: '£150 Harrows mystery box', ticket: '#9', date: '08 Nov 2026' },
+  { name: 'McKenzie V.', prize: 'Ryan Searle GEO darts 32g', ticket: '#171', date: '08 Nov 2026' },
+  { name: 'Jamie G.', prize: 'Target Rove darts 23g', ticket: '#126', date: '08 Nov 2026' },
+  { name: 'Ben C.', prize: 'Luke Littler Nuke Fallout 24g', ticket: 'live draw', date: '' },
+  { name: 'Leigh P.', prize: 'Phil Taylor Power Chrono 26g', ticket: 'live draw', date: '' },
+  { name: 'Dean B.', prize: 'Charlie Manby 25g 95%', ticket: 'live draw', date: '' },
+  { name: 'Robert P.', prize: 'Littler Born To Win dartboard', ticket: 'live draw', date: '' },
 ];
 
 export const money = (v: number) => (v < 1 ? `${Math.round(v * 100)}p` : `£${v % 1 === 0 ? v : v.toFixed(2)}`);
@@ -227,3 +228,9 @@ export const pct = (c: Comp) => Math.round((c.sold / c.max) * 100);
 export const fmt = (n: number) => n.toLocaleString('en-GB');
 export const instantLeft = (c: Comp) => (c.instantPrizes ?? []).reduce((t, p) => t + p.left, 0);
 export const instantTotal = (c: Comp) => (c.instantPrizes ?? []).reduce((t, p) => t + p.total, 0);
+// Sold out: the API says so, or every ticket has gone. Entry stays disabled until the draw.
+export const isSoldOut = (c: Comp) => c.status === 'sold_out' || c.sold >= c.max;
+// Open for entry: live and not sold out. Closed and drawn comps are view-only too.
+export const isOpen = (c: Comp) => (c.status ?? 'live') === 'live' && !isSoldOut(c);
+// "Every ticket wins" only holds when there are at least as many instant prizes as tickets.
+export const everyTicketWins = (c: Comp) => c.type === 'instant' && (c.instantCount ?? 0) >= c.max;

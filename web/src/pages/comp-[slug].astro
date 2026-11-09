@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import PrizeArt from '../components/PrizeArt.astro';
 import Countdown from '../components/Countdown.astro';
 import CompCard from '../components/CompCard.astro';
-import { comps as sampleComps, type Comp, money, gbp, fmt, pct } from '../data/comps';
+import { comps as sampleComps, type Comp, money, gbp, fmt, pct, isOpen, isSoldOut, everyTicketWins } from '../data/comps';
 import { getComp, getComps } from '../lib/data';
 import { href } from '../lib/url';
 
@@ -16,6 +16,8 @@ const c = Astro.props.c ?? (await getComp(Astro.params.slug!));
 if (!c) return new Response('Not found', { status: 404 });
 const comps = await getComps();
 const instant = c.type === 'instant';
+const soldOut = isSoldOut(c);
+const open = isOpen(c);
 const p = pct(c);
 const circ = 2 * Math.PI * 40;
 const drawDate = new Date(c.drawAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
@@ -34,6 +36,7 @@ const pricing = { price: c.price, max: c.max, instant, bundles: c.bundles ?? [],
           <div class="media">
             <PrizeArt kind={c.kind} brand={c.brand} amount={c.amount} />
             <div class="badges">
+              {soldOut && <span class="kick sold">Sold out</span>}
               {instant ? <span class="kick" style="background:var(--gold);color:#1a1200;border-color:var(--gold)">Instant win</span> : <span class="kick"><i></i>{c.drawMode === 'auto' ? 'Auto draw' : 'Live draw'} · {drawDate}</span>}
               {instant && <span class="kick">Reveal: {c.game === 'wheel' ? 'spin the wheel' : 'dartboard throw'}</span>}
               {!instant && <span class="kick is-gold">Cash alternative</span>}
@@ -49,7 +52,8 @@ const pricing = { price: c.price, max: c.max, instant, bundles: c.bundles ?? [],
 
         <div class="buy">
           <div class="chips">
-            {!instant && <span class="kick" style="background:var(--red);border-color:var(--red)">Ends {drawDate.split(',')[0]}</span>}
+            {soldOut && <span class="kick sold">Sold out</span>}
+            {!instant && open && <span class="kick" style="background:var(--red);border-color:var(--red)">Ends {drawDate.split(',')[0]}</span>}
             <span class="kick">Free UK delivery</span><span class="kick">Random tickets</span>
           </div>
           <h1 class="d"><span class:list={['sl', instant ? 'gold' : 'g']}>{c.title}</span></h1>
@@ -67,7 +71,7 @@ const pricing = { price: c.price, max: c.max, instant, bundles: c.bundles ?? [],
             </div>
             <div class="facts mono">
               {instant ? (
-                <><div><b class="gold">{fmt(c.instantRemaining ?? 0)}</b> <span class="muted">of {fmt(c.instantCount ?? 0)} prizes left</span></div><div><span class="muted">{c.slug === 'target-takeover' ? 'Every ticket wins' : 'Instant prizes'}</span></div></>
+                <><div><b class="gold">{fmt(c.instantRemaining ?? 0)}</b> <span class="muted">of {fmt(c.instantCount ?? 0)} prizes left</span></div><div><span class="muted">{everyTicketWins(c) ? 'Every ticket wins' : 'Instant prizes'}</span></div></>
               ) : (
                 <><div><b>{fmt(c.sold)}</b> <span class="muted">of {fmt(c.max)} sold</span></div><div><b class="gold">1 in {fmt(c.max)}</b> <span class="muted">per ticket</span></div></>
               )}
@@ -81,6 +85,17 @@ const pricing = { price: c.price, max: c.max, instant, bundles: c.bundles ?? [],
           )}
           <Countdown to={c.drawAt} size="lg" tone={instant ? 'gold' : 'green'} />
 
+          {!open && (
+            <div class="picker closed" role="status">
+              <div class="ph"><span class="d">{soldOut ? 'Sold out' : 'Entries closed'}</span><span class="mono muted">Entry disabled</span></div>
+              <p class="muted">{c.status === 'drawn' ? 'This competition has been drawn. See the result on the winners page.' : `${soldOut ? 'Every ticket has gone.' : 'Entries have closed.'} The draw goes ahead ${c.drawMode === 'auto' ? 'automatically' : 'live on Facebook'}, ${drawDate}.`}</p>
+              <div class="cta">
+                <button type="button" class:list={['btn', instant ? 'btn-gold' : 'btn-green']} disabled aria-disabled="true">{soldOut ? 'Sold out' : 'Closed'}</button>
+                <a class="btn btn-ghost" href={href('winners')}>Winners</a>
+              </div>
+            </div>
+          )}
+          {open && (
           <form class="picker" id="picker">
             <div class="ph"><span class="d">{instant ? 'How many spins?' : 'How many tickets?'}</span><span class="mono muted">No limit per person</span></div>
             <div class="qtys" style={`grid-template-columns:repeat(${qtys.length},1fr)`} role="group" aria-label="Quantity">
@@ -109,6 +124,7 @@ const pricing = { price: c.price, max: c.max, instant, bundles: c.bundles ?? [],
             </div>
             <p class="fine muted">Ticket numbers are assigned at random when you pay. 18+, UK only. Your spend limits apply.</p>
           </form>
+          )}
         </div>
       </div>
     </div>
@@ -194,9 +210,13 @@ const pricing = { price: c.price, max: c.max, instant, bundles: c.bundles ?? [],
       if (dt && pricing.buyX) { dt.textContent = r.bonus ? '+' + r.bonus + ' free tickets' : 'Buy ' + pricing.buyX.buy + ', get ' + pricing.buyX.free + ' free'; dx.textContent = r.bonus ? 'Deal applied' : 'Pick ' + pricing.buyX.buy + ' or more to unlock'; }
       else if (dt && pricing.multiplier) { dt.textContent = r.mult > 1 ? 'End-prize entries ×' + r.mult : 'Buy ' + pricing.multiplier.from + '+, end-prize entries ×' + pricing.multiplier.times; dx.textContent = r.mult > 1 ? 'Multiplier applied' : 'Ticket multiplier'; }
     }
-    document.querySelectorAll('[data-q]').forEach(function (b) { b.addEventListener('click', function () { state.q = +b.dataset.q; state.tier = -1; render(); }); });
-    document.querySelectorAll('button[data-tier]').forEach(function (b) { b.addEventListener('click', function () { var i = +b.dataset.tier; state.tier = state.tier === i ? -1 : i; render(); }); });
-    document.getElementById('picker').addEventListener('submit', function (e) { e.preventDefault(); var r = calc(); window.V9.add(pricing.slug, pricing.title, r.cost / r.tickets, r.tickets); });
+    var picker = document.getElementById('picker'); // absent when the comp is sold out or closed
+    if (picker) {
+      document.querySelectorAll('[data-q]').forEach(function (b) { b.addEventListener('click', function () { state.q = +b.dataset.q; state.tier = -1; render(); }); });
+      document.querySelectorAll('button[data-tier]').forEach(function (b) { b.addEventListener('click', function () { var i = +b.dataset.tier; state.tier = state.tier === i ? -1 : i; render(); }); });
+      picker.addEventListener('submit', function (e) { e.preventDefault(); var r = calc(); window.V9.add(pricing.slug, pricing.title, r.cost / r.tickets, r.tickets); });
+      render();
+    }
     document.querySelectorAll('[data-tierf]').forEach(function (b) {
       b.addEventListener('click', function () {
         var f = b.dataset.tierf;
@@ -204,7 +224,6 @@ const pricing = { price: c.price, max: c.max, instant, bundles: c.bundles ?? [],
         document.querySelectorAll('.vc').forEach(function (v) { v.hidden = !(f === 'All' || v.dataset.tier === f); });
       });
     });
-    render();
   })();
 </script>
 
@@ -238,6 +257,9 @@ const pricing = { price: c.price, max: c.max, instant, bundles: c.bundles ?? [],
   .facts { font-size: 14px; line-height: 1.9; }
   .endprize { padding: 18px 20px; border-radius: 18px; background: #0b0d0b; border: 1px solid rgba(21, 212, 107, .35); }
   .endprize div { display: flex; flex-direction: column; gap: 6px; } .endprize span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--green-soft); } .endprize b { font-size: 24px; } .endprize small { font-size: 13px; }
+  .kick.sold { background: #fff; border-color: #fff; color: var(--ink); }
+  .picker.closed p { margin: 0; font-size: 15px; line-height: 1.5; }
+  .picker.closed .btn[disabled] { opacity: .45; cursor: not-allowed; }
   .picker { padding: 22px; border-radius: 22px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 16px; }
   .ph { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; } .ph .d { font-size: 26px; } .ph .mono { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
   .qtys { display: grid; gap: 8px; }

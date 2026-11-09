@@ -4,8 +4,8 @@ One server runs two sites:
 
 | Site | Domain | What it runs |
 |---|---|---|
-| Storefront | `staging.vaultninecompetitions.co.uk` | Astro SSR (Node), reverse-proxied by Nginx |
-| API + admin | `api.staging.vaultninecompetitions.co.uk` | Laravel (PHP-FPM), Filament at `/admin`, Horizon at `/horizon` |
+| Storefront | `vaultninecompetitions.on-forge.com` | Astro SSR (Node), reverse-proxied by Nginx |
+| API + admin | `vaultnine-api.on-forge.com` | Laravel (PHP-FPM), Filament at `/admin`, Horizon at `/horizon` |
 
 Do the API site after build-plan step 1 exists in the repo. The storefront can go up first: without `API_URL` it shows the sample data.
 
@@ -17,7 +17,7 @@ In Forge, choose **Create server**:
 - **Region:** London or Frankfurt.
 - **Size:** 2 vCPU / 4 GB.
 - **Type:** App server.
-- **PHP:** 8.4.
+- **PHP:** 8.5.
 - **Database:** PostgreSQL 16. Create the database `vaultnine` and save the generated password.
 
 Forge installs Nginx, Redis, Node and Supervisor.

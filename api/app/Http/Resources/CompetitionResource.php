@@ -33,6 +33,7 @@ class CompetitionResource extends JsonResource
         $data = [
             'slug' => $comp->slug,
             'title' => $comp->title,
+            'status' => $comp->status->value,
             'brand' => $comp->brand,
             'kind' => $comp->kind->value,
             'type' => $comp->type->value,

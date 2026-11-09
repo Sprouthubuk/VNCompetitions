@@ -15,12 +15,12 @@ class CompetitionController extends Controller
     {
     }
 
-    /** Live comps only, soonest draw first. */
+    /** Live comps plus sold-out ones not yet drawn, soonest draw first. */
     public function index(Request $request): JsonResponse
     {
         $payload = $this->cache->competitions(fn () => [
             'data' => CompetitionResource::collection(
-                Competition::query()->live()->forPublicApi()->orderBy('draw_at')->orderBy('sort')->orderBy('title')->get()
+                Competition::query()->listed()->forPublicApi()->orderBy('draw_at')->orderBy('sort')->orderBy('title')->get()
             )->resolve($request),
         ]);
 

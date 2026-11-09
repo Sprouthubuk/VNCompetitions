@@ -18,5 +18,5 @@ vendor/bin/pint --test
 vendor/bin/phpstan analyse
 ```
 
-Composer is pinned to the Forge platform (PHP 8.4, with `ext-pcntl`/`ext-posix` declared, which Horizon needs on Linux).
+Composer is pinned to the Forge platform (PHP 8.5, with `ext-pcntl`/`ext-posix` declared, which Horizon needs on Linux).
 Horizon doesn't run on Windows; locally the queue uses the `database` driver.

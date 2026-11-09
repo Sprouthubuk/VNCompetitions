@@ -13,7 +13,7 @@ use Illuminate\Support\Arr;
 
 /** Keys every comp has, in contract order (docs/API_CONTRACT.md). */
 const COMP_KEYS = [
-    'slug', 'title', 'brand', 'kind', 'type', 'category', 'price', 'was', 'sold', 'max', 'drawAt', 'drawMode',
+    'slug', 'title', 'status', 'brand', 'kind', 'type', 'category', 'price', 'was', 'sold', 'max', 'drawAt', 'drawMode',
     'description', 'cashAlternative', 'featured', 'free', 'image', 'bundles', 'buyX', 'multiplier', 'endPrize',
 ];
 
@@ -73,6 +73,7 @@ describe('GET /api/v1/competitions', function () {
             ->and($json['data'][0])->toBe([
                 'slug' => 'pick-your-board',
                 'title' => 'Pick your board',
+                'status' => 'live',
                 'brand' => 'Unicorn',
                 'kind' => 'board',
                 'type' => 'standard',
@@ -143,14 +144,28 @@ describe('GET /api/v1/competitions', function () {
         }
     });
 
-    it('lists live comps only, soonest draw first', function () {
+    it('lists live and sold-out comps, soonest draw first', function () {
         Competition::factory()->create(['slug' => 'later', 'draw_at' => now()->addDays(9)]);
         Competition::factory()->create(['slug' => 'sooner', 'draw_at' => now()->addDays(2)]);
-        foreach ([CompetitionStatus::Draft, CompetitionStatus::ComingSoon, CompetitionStatus::Cancelled, CompetitionStatus::Closed, CompetitionStatus::Drawn, CompetitionStatus::SoldOut] as $status) {
+        Competition::factory()->status(CompetitionStatus::SoldOut)->create(['slug' => 'sold-out', 'draw_at' => now()->addDays(5)]);
+        foreach ([CompetitionStatus::Draft, CompetitionStatus::ComingSoon, CompetitionStatus::Cancelled, CompetitionStatus::Closed, CompetitionStatus::Drawn] as $status) {
             Competition::factory()->status($status)->create(['slug' => $status->value, 'draw_at' => now()->addDay()]);
         }
 
-        expect($this->getJson('/api/v1/competitions')->assertOk()->json('data.*.slug'))->toBe(['sooner', 'later']);
+        $data = $this->getJson('/api/v1/competitions')->assertOk()->json('data');
+
+        expect(array_column($data, 'slug'))->toBe(['sooner', 'sold-out', 'later'])
+            ->and(array_column($data, 'status'))->toBe(['live', 'sold_out', 'live']);
+    });
+
+    it('drops a sold-out comp from the list once it is drawn', function () {
+        $comp = Competition::factory()->status(CompetitionStatus::SoldOut)->create(['slug' => 'sold-out']);
+        expect($this->getJson('/api/v1/competitions')->json('data.*.slug'))->toBe(['sold-out']);
+
+        $comp->update(['status' => CompetitionStatus::Drawn]);
+
+        expect($this->getJson('/api/v1/competitions')->json('data'))->toBe([])
+            ->and($this->getJson('/api/v1/competitions/sold-out')->assertOk()->json('data.status'))->toBe('drawn');
     });
 
     it('marks free comps and drops was when there is no sale', function () {

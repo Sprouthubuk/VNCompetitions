@@ -94,13 +94,23 @@ class Competition extends Model
     }
 
     /**
-     * On sale now: the only status the public list shows.
+     * On sale now.
      *
      * @param  Builder<Competition>  $query
      */
     public function scopeLive(Builder $query): void
     {
         $query->where('status', CompetitionStatus::Live);
+    }
+
+    /**
+     * The public list: live comps, plus sold-out ones until they're drawn.
+     *
+     * @param  Builder<Competition>  $query
+     */
+    public function scopeListed(Builder $query): void
+    {
+        $query->whereIn('status', [CompetitionStatus::Live, CompetitionStatus::SoldOut]);
     }
 
     /**

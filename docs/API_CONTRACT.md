@@ -6,7 +6,7 @@ Base URL: `API_URL` (e.g. `https://api.staging.vaultninecompetitions.co.uk`). Al
 
 ## GET /api/v1/competitions
 
-Returns live comps only (`status = live`; not `coming_soon`, not `draft`), soonest `drawAt` first.
+Returns live comps plus sold-out comps that haven't been drawn yet (`status` is `live` or `sold_out`; never `draft`, `coming_soon`, `closed`, `drawn` or `cancelled`), soonest `drawAt` first. A sold-out comp drops off the list once it's drawn.
 
 ```json
 {
@@ -14,6 +14,7 @@ Returns live comps only (`status = live`; not `coming_soon`, not `draft`), soone
     {
       "slug": "pick-your-board",
       "title": "Pick your board",
+      "status": "live",
       "brand": "Unicorn",
       "kind": "board",
       "type": "standard",
@@ -41,6 +42,7 @@ Field notes:
 
 | Field | Type | Notes |
 |---|---|---|
+| `status` | `live \| sold_out \| closed \| drawn` | The list only has `live` and `sold_out`; a single comp can also be `closed` or `drawn`. The storefront shows a **Sold out** badge when `status` is `sold_out` (or `sold >= max`) and only allows entry when `status` is `live` and `sold < max` |
 | `kind` | `darts \| board \| ring \| box \| voucher` | Picks the fallback illustration when there's no `image` |
 | `type` | `standard \| instant` | |
 | `category` | `Instant win \| Darts \| Boards \| Mystery boxes \| Vouchers` | Admin-managed list later; keep these values for now |
@@ -69,7 +71,7 @@ Instant-win comps also include:
 
 ## GET /api/v1/competitions/{slug}
 
-Returns one comp in the same shape, or 404. `live` comps only, plus `closed`/`drawn` ones (so old links still work and can show the result).
+Returns one comp in the same shape, or 404. `live` and `sold_out` comps, plus `closed`/`drawn` ones (so old links still work and can show the result). `draft`, `coming_soon` and `cancelled` comps are a 404.
 
 ## GET /api/v1/winners
 

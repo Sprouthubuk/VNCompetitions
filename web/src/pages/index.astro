@@ -3,17 +3,18 @@ import Base from '../layouts/Base.astro';
 import CompCard from '../components/CompCard.astro';
 import PrizeArt from '../components/PrizeArt.astro';
 import Countdown from '../components/Countdown.astro';
-import { categories, fmt, money } from '../data/comps';
+import { categories, fmt, money, isOpen, isSoldOut, everyTicketWins } from '../data/comps';
 import { getComps, getWinners } from '../lib/data';
 const [comps, winners] = await Promise.all([getComps(), getWinners()]);
 import { href, compHref, asset } from '../lib/url';
 
-const featured = comps.find((c) => c.type === 'instant') ?? comps[0];
+const featured = comps.find((c) => c.type === 'instant' && isOpen(c)) ?? comps.find((c) => c.type === 'instant') ?? comps[0];
 const instants = comps.filter((c) => c.type === 'instant');
 const standard = comps.filter((c) => c.type === 'standard');
-const ending = standard.slice(0, 4);
+const openStandard = standard.filter(isOpen);
+const ending = (openStandard.length ? openStandard : standard).slice(0, 4);
 const instantPrizes = instants.reduce((t, c) => t + (c.instantCount ?? 0), 0);
-const quickPool = comps.filter((c) => c.price <= 2).slice(0, 4).map((c) => ({ slug: c.slug, title: c.title, price: c.price, max: c.type === 'instant' ? 0 : c.max }));
+const quickPool = comps.filter((c) => c.price <= 2 && isOpen(c)).slice(0, 4).map((c) => ({ slug: c.slug, title: c.title, price: c.price, max: c.type === 'instant' ? 0 : c.max }));
 const tilt = [-3, 2, -1.5, 3, -2, 1.5];
 const lights = [
   { x: 6, c: 'rgba(21,212,107,.5)', t: 7, d: 0, from: -28, to: 18 },
@@ -59,11 +60,13 @@ const steps = [
       <div class="slides" data-slides>
         {slides.map((c, i) => {
           const inst = c.type === 'instant';
+          const open = isOpen(c);
           const p = Math.round((c.sold / c.max) * 100);
           return (
             <article class:list={['slide', { 'is-on': i === 0, inst }]} data-slide={i} aria-hidden={i === 0 ? 'false' : 'true'}>
               <div class="s-info">
                 <div class="s-tags">
+                  {isSoldOut(c) && <span class="kick" style="background:#fff;color:var(--ink);border-color:#fff">Sold out</span>}
                   {inst ? <span class="kick is-gold" style="background:var(--gold);color:#1a1200;border-color:var(--gold)">Instant win</span> : <span class="kick"><i></i>{c.drawMode === 'auto' ? 'Auto draw' : 'Live draw'}</span>}
                   {inst ? <span class="kick is-gold">{fmt(c.instantRemaining ?? 0)} prizes left</span> : <span class="kick is-gold">Cash alternative</span>}
                 </div>
@@ -77,8 +80,8 @@ const steps = [
                 </div>
                 <Countdown to={c.drawAt} size="md" tone={inst ? 'gold' : 'green'} />
                 <div class="s-cta">
-                  <a class:list={['btn', inst ? 'btn-gold' : 'btn-green']} href={compHref(c.slug)}>{inst ? 'Spin to win' : 'Enter now'} →</a>
-                  <button type="button" class="btn plus5" data-add={c.slug} data-title={c.title} data-price={c.price} data-qty="5" aria-label={`Quick add 5 to ${c.title}`}>+5</button>
+                  <a class:list={['btn', inst ? 'btn-gold' : 'btn-green']} href={compHref(c.slug)}>{open ? (inst ? 'Spin to win' : 'Enter now') : 'Sold out · view draw'} →</a>
+                  {open && <button type="button" class="btn plus5" data-add={c.slug} data-title={c.title} data-price={c.price} data-qty="5" aria-label={`Quick add 5 to ${c.title}`}>+5</button>}
                 </div>
               </div>
               <a class="s-art" href={compHref(c.slug)} tabindex="-1">
@@ -112,7 +115,7 @@ const steps = [
       {featured?.type === 'instant' && (
         <a class="strip" href={compHref(featured.slug)}>
           <span class="num gold">{fmt(featured.instantRemaining ?? 0)}</span>
-          <span class="strip-txt"><span class="kick is-gold"><i></i>Live</span><span class="d"><span class="sl">Instant prizes still up for grabs</span></span><span class="muted">Across {featured.title}. Every ticket wins something.</span></span>
+          <span class="strip-txt"><span class="kick is-gold"><i></i>Live</span><span class="d"><span class="sl">Instant prizes still up for grabs</span></span><span class="muted">Across {featured.title}. {everyTicketWins(featured) ? 'Every ticket wins something.' : `${fmt(featured.instantRemaining ?? 0)} instant prizes left.`}</span></span>
           <span class="btn btn-gold btn-sm">Win one now →</span>
         </a>
       )}
