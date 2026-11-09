@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\WinnerFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,6 +29,7 @@ class Winner extends Model
     /** @use HasFactory<WinnerFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     protected $guarded = ['id'];
 

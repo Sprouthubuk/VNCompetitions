@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\LimitEventType;
 use App\Models\Concerns\AppendOnly;
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\LimitEventFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -27,6 +28,7 @@ class LimitEvent extends Model
     /** @use HasFactory<LimitEventFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     public const UPDATED_AT = null;
 

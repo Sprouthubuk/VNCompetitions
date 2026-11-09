@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\WalletTransactionType;
 use App\Models\Concerns\AppendOnly;
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\WalletTransactionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -33,6 +34,7 @@ class WalletTransaction extends Model
     /** @use HasFactory<WalletTransactionFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     public const UPDATED_AT = null;
 

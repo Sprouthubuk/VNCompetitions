@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -29,6 +30,7 @@ class Order extends Model
     /** @use HasFactory<OrderFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     protected $guarded = ['id'];
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
@@ -40,6 +41,7 @@ class User extends Authenticatable implements FilamentUser
     use HasFactory;
     use HasRoles;
     use HasUuids;
+    use StoresTimesInUtc;
     use Notifiable;
 
     /**

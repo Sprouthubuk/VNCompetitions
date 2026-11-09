@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\PostalEntryFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -26,6 +27,7 @@ class PostalEntry extends Model
     /** @use HasFactory<PostalEntryFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     protected $guarded = ['id'];
 

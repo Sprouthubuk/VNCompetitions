@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PrizeTier;
+use App\Models\Concerns\StoresTimesInUtc;
 use Database\Factories\InstantWinPrizeLineFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,6 +30,7 @@ class InstantWinPrizeLine extends Model
     /** @use HasFactory<InstantWinPrizeLineFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     protected $guarded = ['id'];
 

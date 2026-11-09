@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\ResponsibleLimitFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -27,6 +28,7 @@ class ResponsibleLimit extends Model
     /** @use HasFactory<ResponsibleLimitFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     protected $guarded = ['id'];
 

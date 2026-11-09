@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DrawKind;
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\DrawFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -32,6 +33,7 @@ class Draw extends Model
     /** @use HasFactory<DrawFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     protected $guarded = ['id'];
 

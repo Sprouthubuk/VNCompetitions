@@ -55,6 +55,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => 'prefer',
+            // Laravel writes timestamps without an offset, so the session must be UTC
+            // (the app's timezone) or Postgres reads them in the server's local zone.
+            'timezone' => 'UTC',
         ],
 
         'sqlsrv' => [

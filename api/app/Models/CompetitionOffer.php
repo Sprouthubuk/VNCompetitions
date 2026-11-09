@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\OfferKind;
+use App\Models\Concerns\StoresTimesInUtc;
 use Database\Factories\CompetitionOfferFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,6 +26,7 @@ class CompetitionOffer extends Model
     /** @use HasFactory<CompetitionOfferFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     protected $guarded = ['id'];
 

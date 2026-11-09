@@ -8,6 +8,7 @@ use App\Enums\CompetitionStatus;
 use App\Enums\CompetitionType;
 use App\Enums\InstantGame;
 use App\Enums\OfferKind;
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\CompetitionFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -54,6 +55,7 @@ class Competition extends Model
     /** @use HasFactory<CompetitionFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     /** Statuses whose comp page is reachable by slug. */
     public const PUBLIC_STATUSES = [
@@ -110,6 +112,29 @@ class Competition extends Model
     public function scopePublic(Builder $query): void
     {
         $query->whereIn('status', self::PUBLIC_STATUSES);
+    }
+
+    /**
+     * Everything CompetitionResource reads, in a fixed number of queries.
+     * Prize lines carry counts only; prize numbers are never selected.
+     *
+     * @param  Builder<Competition>  $query
+     */
+    public function scopeForPublicApi(Builder $query): void
+    {
+        $query->with([
+            'bundles',
+            'buyXOffer',
+            'multiplierOffer',
+            'prizeLines' => fn ($lines) => $lines->withCount([
+                'units',
+                'units as units_left_count' => fn ($units) => $units->whereNull('won_at'),
+            ]),
+        ])->withCount([
+            'tickets',
+            'instantPrizes',
+            'instantPrizes as instant_prizes_remaining_count' => fn ($units) => $units->whereNull('won_at'),
+        ]);
     }
 
     public function isInstant(): bool

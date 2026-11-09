@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\AppendOnly;
+use App\Models\Concerns\StoresTimesInUtc;
 use Carbon\CarbonImmutable;
 use Database\Factories\AdminAuditLogFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -30,6 +31,7 @@ class AdminAuditLog extends Model
     /** @use HasFactory<AdminAuditLogFactory> */
     use HasFactory;
     use HasUuids;
+    use StoresTimesInUtc;
 
     public const UPDATED_AT = null;
 
