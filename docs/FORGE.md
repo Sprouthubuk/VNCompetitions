@@ -72,38 +72,60 @@ Then:
 7. **SSL:** Let's Encrypt.
 8. **First deploy:** click Deploy, then in the site's **Commands** tab run `php artisan db:seed --force` and `php artisan make:filament-user`.
 
-## 3. Storefront site (`staging…`)
+## 3. Storefront site (`vaultninecompetitions.on-forge.com`)
 
-1. **New site:**
-   - Domain `staging.vaultninecompetitions.co.uk`.
-   - Project type: **Static HTML / Other** (Nginx proxies to Node; nothing is served from disk).
-   - Web directory: `/web/dist/client`.
-2. **Repository:** connect the same repo and branch. Enable Quick deploy.
-3. **Environment:** set these in the site's Environment tab. Forge saves them as `.env` at the repo root, and the daemon reads that file:
+This is how the storefront is deployed today. It runs on the Forge-provided domain; when `staging.vaultninecompetitions.co.uk` is pointed at it, add that domain to the site and change `SITE_URL`.
+
+1. **Site:**
+   - Domain `vaultninecompetitions.on-forge.com` (site path `/home/forge/vaultninecompetitions.on-forge.com`).
+   - Web directory: `/web/public`. Nginx proxies pages to Node (step 6), so this only matters as the site root.
+   - **Zero-downtime deployments: off.** The daemon and deploy script use the fixed site path above; zero-downtime releases would move the code into `releases/…` directories.
+2. **Repository:** the same repo, branch `main`, Quick deploy on.
+3. **Environment:** set these in the site's Environment tab. Forge saves them as `.env` at the repo root; the deploy script copies that file to **`web/.env`**, which is the file the daemon reads:
 
    ```
    API_URL=https://api.staging.vaultninecompetitions.co.uk
-   SITE_URL=https://staging.vaultninecompetitions.co.uk
+   SITE_URL=https://vaultninecompetitions.on-forge.com
    HOST=127.0.0.1
    PORT=4321
    ```
 
+   Leave `API_URL` out until the API site (section 2) is deployed: without it the storefront shows the sample data from `web/src/data/comps.ts`.
+
 4. **Deploy script:**
 
    ```bash
-   cd $FORGE_SITE_PATH/web
+   cd /home/forge/vaultninecompetitions.on-forge.com
    git pull origin $FORGE_SITE_BRANCH
+
+   # Forge's Environment tab writes .env at the repo root; the daemon reads web/.env.
+   if [ -f .env ]; then cp .env web/.env; fi
+
+   cd web
    npm ci
    npm run build
-   sudo -S supervisorctl restart daemon-vaultnine-web:* || true
+
+   # Stop the running server; Supervisor restarts the daemon on the new build.
+   pkill -f "web/dist/server/entry.mjs" || true
    ```
 
-5. **Daemon:** in Daemons, add `node --env-file=../.env dist/server/entry.mjs`, directory `…/web`, user `forge`. Note the daemon's ID and update the restart line in the deploy script to match. (Forge names it `daemon-<id>`, so the name above is only a placeholder.)
-6. **Nginx:** edit the site's Nginx config so `location /` proxies to Node and static assets are served directly:
+   `pkill` needs no sudo: the daemon runs as `forge`, the same user as the deploy.
+
+5. **Daemon** (`daemon-1216955`):
+   - Directory: `/home/forge/vaultninecompetitions.on-forge.com/web/`
+   - User: `forge`
+   - Command:
+
+     ```bash
+     node --env-file=/home/forge/vaultninecompetitions.on-forge.com/web/.env /home/forge/vaultninecompetitions.on-forge.com/web/dist/server/entry.mjs
+     ```
+
+   Absolute paths on purpose, so the command doesn't depend on the directory Supervisor starts it in. Changing an environment variable needs a deploy (to copy `.env` and restart), or a daemon restart once `web/.env` has been updated.
+6. **Nginx:** edit the site's Nginx config so `location /` proxies to Node and Astro's hashed assets are served directly:
 
    ```nginx
    location /_astro/ {
-       root /home/forge/staging.vaultninecompetitions.co.uk/web/dist/client;
+       root /home/forge/vaultninecompetitions.on-forge.com/web/dist/client;
        expires 1y;
        add_header Cache-Control "public, immutable";
    }
