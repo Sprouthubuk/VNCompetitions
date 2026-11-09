@@ -1,0 +1,55 @@
+---
+// Silhouette crowd, generated deterministically. Add class "hype" to the wrapper to make it jump.
+interface Props { seed?: number; count?: number; cards?: number; class?: string }
+const { seed = 7, count = 46, cards = 4, class: cls = '' } = Astro.props;
+let s = seed;
+const rnd = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+type Fan = { x: number; y: number; sc: number; fill: string; arms: 'none' | 'up' | 'card' | 'pint' | 'phone'; hype: boolean; d: number; t: number };
+const fans: Fan[] = [];
+const rows = [
+  { n: Math.round(count * 0.55), y: 150, sc: 0.62, fill: '#0f1610' },
+  { n: count, y: 228, sc: 0.95, fill: '#060806' },
+];
+let cardLeft = cards;
+rows.forEach((r, ri) => {
+  for (let i = 0; i < r.n; i++) {
+    const x = (i + 0.5) * (1600 / r.n) + (rnd() - 0.5) * 18;
+    const roll = rnd();
+    let arms: Fan['arms'] = 'none';
+    if (ri === 1 && cardLeft > 0 && i % Math.floor(r.n / cards) === 3) { arms = 'card'; cardLeft--; }
+    else if (roll < 0.14) arms = 'up';
+    else if (roll < 0.26 && ri === 1) arms = 'pint';
+    else if (roll < 0.32) arms = 'phone';
+    fans.push({ x, y: r.y + (rnd() - 0.5) * 8, sc: r.sc * (0.88 + rnd() * 0.22), fill: r.fill, arms, hype: arms === 'none' && rnd() < 0.55, d: -rnd() * 2, t: 1.6 + rnd() * 1.4 });
+  }
+});
+---
+<svg class:list={['crowd', cls]} viewBox="0 0 1600 240" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+  {fans.map((f) => (
+    <g transform={`translate(${f.x.toFixed(1)} ${f.y.toFixed(1)}) scale(${f.sc.toFixed(2)})`}>
+      <g class="fan" style={`--d:${f.d.toFixed(2)}s;--t:${f.t.toFixed(2)}s`} fill={f.fill} stroke="rgba(74,222,128,.16)" stroke-width="1.5">
+        {(f.arms === 'up' || f.arms === 'card') && <path d="M-20 -46 L-34 -112 M20 -46 L34 -112" stroke={f.fill} stroke-width="11" stroke-linecap="round" />}
+        {f.hype && <path class="hype-arms" d="M-20 -46 L-30 -114 M20 -46 L30 -114" stroke={f.fill} stroke-width="11" stroke-linecap="round" />}
+        {f.arms === 'pint' && <><path d="M22 -44 L36 -70" stroke={f.fill} stroke-width="11" stroke-linecap="round" /><rect x="30" y="-92" width="13" height="20" rx="2" fill="#ffb347" stroke="none" opacity=".85" /><rect x="30" y="-92" width="13" height="5" rx="2" fill="#fff4d6" stroke="none" /></>}
+        {f.arms === 'phone' && <><path d="M18 -46 L28 -104" stroke={f.fill} stroke-width="11" stroke-linecap="round" /><rect x="22" y="-122" width="12" height="18" rx="2" fill="#eafff2" stroke="none" class="phone" /></>}
+        <path d="M-32 0 C-32 -38 -24 -56 0 -58 C24 -56 32 -38 32 0Z" />
+        <circle cy="-74" r="16" />
+        {f.arms === 'card' && <g class="card" stroke="none"><rect x="-36" y="-140" width="72" height="38" rx="4" fill="#f6f3ea" /><text x="0" y="-111" text-anchor="middle" font-family="Anton, Impact, sans-serif" font-size="30" fill="#d4212b">180</text></g>}
+      </g>
+    </g>
+  ))}
+</svg>
+
+<style>
+  .crowd { display: block; width: 100%; height: 100%; }
+  .fan { transform-box: fill-box; transform-origin: 50% 100%; animation: fan-bob var(--t) ease-in-out var(--d) infinite alternate; }
+  .hype-arms { opacity: 0; transition: opacity .2s; }
+  .phone { filter: drop-shadow(0 0 6px rgba(234, 255, 242, .9)); animation: v9-pulse 2.4s ease-in-out infinite; }
+  .card { transform-box: fill-box; transform-origin: 50% 100%; animation: card-wave 1.8s ease-in-out infinite alternate; }
+  :global(.hype) .fan { animation: fan-jump .38s ease-in-out var(--d) infinite alternate; }
+  :global(.hype) .hype-arms { opacity: 1; }
+  @keyframes fan-bob { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+  @keyframes fan-jump { from { transform: translateY(0); } to { transform: translateY(-16px); } }
+  @keyframes card-wave { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+  @media (prefers-reduced-motion: reduce) { .fan, .card, .phone { animation: none !important; } }
+</style>

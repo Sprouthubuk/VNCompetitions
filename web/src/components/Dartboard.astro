@@ -1,0 +1,106 @@
+---
+// Regulation-layout dartboard. Default: hero version with three darts in treble 20. `bare`: board only.
+interface Props { bare?: boolean }
+const { bare = false } = Astro.props;
+const order = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+const rad = (d: number) => (d * Math.PI) / 180;
+const pt = (r: number, a: number) => `${(r * Math.cos(rad(a))).toFixed(2)} ${(r * Math.sin(rad(a))).toFixed(2)}`;
+const sector = (r1: number, r2: number, a1: number, a2: number) =>
+  `M${pt(r1, a1)} L${pt(r2, a1)} A${r2} ${r2} 0 0 1 ${pt(r2, a2)} L${pt(r1, a2)} A${r1} ${r1} 0 0 0 ${pt(r1, a1)}Z`;
+// Board radii (scaled from 170mm double ring)
+const R = { dOut: 170, dIn: 160, tOut: 107, tIn: 97, ob: 16, ib: 6.4 };
+const segs = order.map((n, i) => {
+  const mid = -90 + i * 18;
+  const a1 = mid - 9, a2 = mid + 9;
+  const even = i % 2 === 0;
+  return {
+    n, mid,
+    single: even ? '#141414' : '#efe6d2',
+    ring: even ? '#d4212b' : '#00a04a',
+    inner: sector(R.ob, R.tIn, a1, a2),
+    treble: sector(R.tIn, R.tOut, a1, a2),
+    outer: sector(R.tOut, R.dIn, a1, a2),
+    dbl: sector(R.dIn, R.dOut, a1, a2),
+    num: pt(197, mid),
+    wire: `M${pt(R.ob, a1)} L${pt(R.dOut, a1)}`,
+  };
+});
+// Three darts in treble 20: [tip angle on board, radius, dart rotation, delay]
+const darts = [
+  { a: -94.5, r: 101, rot: -8, d: 0 },
+  { a: -90, r: 103, rot: 4, d: 0.35 },
+  { a: -85.5, r: 100, rot: -18, d: 0.7 },
+];
+---
+<div class:list={['board-scene', { bare }]} aria-hidden="true">
+  {!bare && <div class="halo"></div>}
+  <svg class="board" viewBox="-240 -240 480 480">
+    <defs>
+      <radialGradient id="db-surround" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1c1c1c" /><stop offset="1" stop-color="#050505" /></radialGradient>
+      <radialGradient id="db-shade" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#fff" stop-opacity=".14" /><stop offset=".6" stop-color="#fff" stop-opacity="0" /><stop offset="1" stop-color="#000" stop-opacity=".45" /></radialGradient>
+      <linearGradient id="db-barrel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f4" /><stop offset=".45" stop-color="#9a9a9a" /><stop offset=".55" stop-color="#6b6b6b" /><stop offset="1" stop-color="#d0d0d0" /></linearGradient>
+      <linearGradient id="db-flight" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#15D46B" /><stop offset="1" stop-color="#03371F" /></linearGradient>
+    </defs>
+    <circle r="232" fill="url(#db-surround)" />
+    <circle r="232" fill="none" stroke="rgba(21,212,107,.5)" stroke-width="2" />
+    {segs.map((s) => (
+      <g>
+        <path d={s.inner} fill={s.single} />
+        <path d={s.treble} fill={s.ring} />
+        <path d={s.outer} fill={s.single} />
+        <path d={s.dbl} fill={s.ring} />
+      </g>
+    ))}
+    <circle r={R.ob} fill="#00a04a" />
+    <circle r={R.ib} fill="#d4212b" />
+    <g fill="none" stroke="#c9c9c9" stroke-opacity=".7" stroke-width=".9">
+      {segs.map((s) => <path d={s.wire} />)}
+      <circle r={R.dOut} /><circle r={R.dIn} /><circle r={R.tOut} /><circle r={R.tIn} /><circle r={R.ob} /><circle r={R.ib} />
+      <circle r="212" stroke-width="1.6" />
+    </g>
+    {segs.map((s) => {
+      const [x, y] = s.num.split(' ');
+      return <text x={x} y={y} class:list={['num', { top: s.n === 20 }]} text-anchor="middle" dominant-baseline="central">{s.n}</text>;
+    })}
+    <circle r="232" fill="url(#db-shade)" pointer-events="none" />
+    {!bare && darts.map((d) => {
+      const [x, y] = pt(d.r, d.a).split(' ');
+      return (
+        <g transform={`translate(${x} ${y})`}>
+          <ellipse cx="2" cy="3" rx="10" ry="4" fill="#000" opacity=".5" />
+          <g class="dart" style={`--d:${d.d}s`} transform={`rotate(${d.rot}) scale(.78)`}>
+            <g class="fly">
+              <path d="M0 0 L22 -1.6 L22 1.6Z" fill="#dcdcdc" />
+              <rect x="22" y="-5" width="70" height="10" rx="4" fill="url(#db-barrel)" />
+              <g stroke="#3a3a3a" stroke-width="1.2" opacity=".7">{[34, 40, 46, 52, 58, 64, 70, 76].map((gx) => <path d={`M${gx} -5 V5`} />)}</g>
+              <rect x="22" y="-5" width="6" height="10" rx="2" fill="#00B050" />
+              <rect x="92" y="-2.6" width="52" height="5.2" rx="2" fill="#0b0b0b" stroke="#15D46B" stroke-width="1" />
+              <path d="M134 0 L178 -30 L196 -30 L182 0 L196 30 L178 30Z" fill="url(#db-flight)" stroke="#4ADE80" stroke-width="1.2" />
+              <path d="M134 0 L190 0" stroke="#4ADE80" stroke-width="2" />
+            </g>
+          </g>
+        </g>
+      );
+    })}
+  </svg>
+  {!bare && <div class="score">
+    <span class="mono">Treble 20 ×3</span>
+    <b>180</b>
+  </div>}
+</div>
+
+<style>
+  .board-scene { position: relative; width: 100%; aspect-ratio: 1; }
+  .halo { position: absolute; inset: 6%; border-radius: 50%; background: radial-gradient(circle, rgba(0, 176, 80, .55), transparent 68%); filter: blur(30px); animation: v9-pulse 4s ease-in-out infinite; }
+  .board { position: relative; width: 100%; height: 100%; overflow: visible; transform: perspective(1400px) rotateY(-16deg) rotateX(4deg); filter: drop-shadow(0 50px 70px rgba(0, 0, 0, .8)); }
+  .bare .board { transform: none; filter: drop-shadow(0 20px 30px rgba(0, 0, 0, .8)); }
+  .num { font: 400 25px var(--font-display); fill: #f5f5f5; }
+  .num.top { fill: var(--gold); font-size: 30px; }
+  .fly { animation: dart-in .55s cubic-bezier(.2, .9, .25, 1.15) both; animation-delay: calc(var(--d) + .3s); }
+  @keyframes dart-in { from { transform: translateX(520px); opacity: 0; } 70% { opacity: 1; } to { transform: translateX(0); opacity: 1; } }
+  .score { position: absolute; top: 2%; left: 0; display: flex; flex-direction: column; align-items: flex-start; padding: 10px 18px 6px; border-radius: 16px; background: linear-gradient(180deg, var(--gold-hi), var(--gold-lo)); color: #1a1200; transform: rotate(-6deg); box-shadow: 0 24px 60px -16px rgba(255, 200, 61, .8); animation: score-pop .5s cubic-bezier(.2, .9, .3, 1.4) 1.6s both; }
+  .score span { font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+  .score b { font: italic 400 66px/.95 var(--font-display); }
+  @keyframes score-pop { from { transform: rotate(-6deg) scale(0); } to { transform: rotate(-6deg) scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .fly, .score, .halo { animation: none; } }
+</style>

@@ -1,0 +1,100 @@
+---
+import Base from '../layouts/Base.astro';
+import { href, asset } from '../lib/url';
+const steps = [
+  ['Grab a postcard', 'Any unenclosed postcard. One entry per card, first or second class.'],
+  ['Write your details', 'Full name, address, phone, the email on your Vault Nine account, and the competition name.'],
+  ['Post it to us', 'It must reach us before the competition closes. We don’t accept hand-delivered cards.'],
+  ['Get your ticket', 'We add one random ticket to your account and email you its number. Same odds as a paid ticket.'],
+];
+---
+<Base title="Free postal entry" active="free">
+  <section class="hero">
+    <div class="wrap grid">
+      <div class="copy">
+        <span class="kick"><i></i>Every competition · no purchase needed</span>
+        <h1 class="d"><span class="sl">Free entry,</span><br /><span class="sl g">same odds.</span></h1>
+        <p class="lead">Every Vault Nine competition has a free route in by post. A postcard entry goes into exactly the same random draw as a paid ticket.</p>
+        <div class="cta"><a class="btn btn-green" href={href('competitions')}>Pick a competition</a><a class="btn btn-ghost" href="#rules">Read the rules</a></div>
+      </div>
+      <div class="card" aria-label="Example postcard">
+        <div class="stamp"><img src={asset('logo.png')} alt="" width="80" /></div>
+        <div class="left">
+          <span class="mono muted">Your entry</span>
+          <p class="hand">Jane Smith<br />12 Oche Lane, Bristol BS1 4XX<br />07700 900123<br />jane@email.co.uk<br /><b>Comp: Pick your board</b></p>
+        </div>
+        <div class="right">
+          <span class="mono muted">Send to</span>
+          <address class="hand">Vault Nine Competitions Ltd<br />Flat 6, The Silvers<br />54 Whitefield Road<br />Christchurch, Dorset<br />BH25 6DG</address>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="steps">
+        {steps.map(([t, d], i) => (
+          <article class="panel step"><b class="d g">0{i + 1}</b><h3 class="d">{t}</h3><p class="muted">{d}</p></article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="rules" style="padding-top:0">
+    <div class="wrap two">
+      <div class="panel rules">
+        <h2 class="d"><span class="sl">The rules</span></h2>
+        <ul>
+          <li>One entry per postcard. Bulk or group cards are void.</li>
+          <li>Postal entries count towards the competition’s maximum tickets.</li>
+          <li>Entries arriving after a competition closes are not carried over to another.</li>
+          <li>Incomplete or illegible cards can’t be entered. We’ll email you if we can read the address.</li>
+          <li>You must be 18+ and live in the UK.</li>
+        </ul>
+      </div>
+      <div class="panel cmp">
+        <h2 class="d"><span class="sl">Postal vs paid</span></h2>
+        <table>
+          <thead><tr><th></th><th>Post</th><th>Paid</th></tr></thead>
+          <tbody>
+            <tr><td>Random ticket number</td><td class="g">✓</td><td class="g">✓</td></tr>
+            <tr><td>Same draw and odds</td><td class="g">✓</td><td class="g">✓</td></tr>
+            <tr><td>Instant win prizes</td><td class="g">✓</td><td class="g">✓</td></tr>
+            <tr><td>Bundle and bonus deals</td><td class="muted">—</td><td class="g">✓</td></tr>
+            <tr><td>Arrives</td><td class="muted">When the card lands</td><td>Instantly</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero { padding: 56px 0 40px; background: radial-gradient(45% 60% at 80% 40%, rgba(0, 176, 80, .22), transparent 70%), var(--ink); }
+  .grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 56px; align-items: center; }
+  .copy { display: flex; flex-direction: column; gap: 22px; }
+  h1 { font-size: clamp(60px, 8vw, 116px); }
+  .lead { margin: 0; color: var(--dim); font-size: 18px; line-height: 1.6; max-width: 520px; }
+  .cta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .card { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 40px 32px 32px; border-radius: 10px; background: #f2efe6; color: #1c1c1c; transform: rotate(-2.5deg); box-shadow: 0 60px 120px -40px rgba(0, 176, 80, .6), 0 30px 60px -20px rgba(0, 0, 0, .8); }
+  .card::before { content: ''; position: absolute; top: 32px; bottom: 32px; left: 50%; width: 1px; background: rgba(0, 0, 0, .2); }
+  .card .mono { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #6b6b6b; }
+  .hand { margin: 10px 0 0; font: 500 17px/1.7 'Hanken Grotesk', sans-serif; font-style: italic; }
+  .right { padding-top: 70px; }
+  .right address { border-top: 1px dashed rgba(0, 0, 0, .3); padding-top: 8px; }
+  .stamp { position: absolute; top: 18px; right: 20px; width: 92px; height: 70px; padding: 6px; background: #050505; border: 3px dotted #f2efe6; outline: 1px solid rgba(0, 0, 0, .3); display: flex; align-items: center; justify-content: center; }
+  .stamp img { width: 100%; height: auto; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .step { padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+  .step > b { font-size: 48px; } .step h3 { font-size: 26px; } .step p { margin: 0; line-height: 1.55; font-size: 15px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .rules, .cmp { padding: 30px; } .rules h2, .cmp h2 { font-size: 40px; margin-bottom: 16px; }
+  .rules ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 12px; color: var(--dim); line-height: 1.55; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 12px 8px; border-bottom: 1px solid var(--line); text-align: left; font-size: 15px; }
+  th { font: 400 18px var(--font-display); text-transform: uppercase; letter-spacing: .04em; }
+  td:not(:first-child), th:not(:first-child) { text-align: center; }
+  @media (max-width: 1060px) { .grid, .two { grid-template-columns: 1fr; } .steps { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } .card { grid-template-columns: 1fr; transform: none; } .card::before { display: none; } .right { padding-top: 0; } }
+</style>

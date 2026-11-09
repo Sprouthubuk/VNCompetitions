@@ -1,0 +1,185 @@
+---
+// "Live on the oche": a looping exhibition match. Darts land on the board, the caller calls
+// the score, the scoreboard counts down from 501, and a 180 sets off the pyro and the crowd.
+import Dartboard from './Dartboard.astro';
+import Crowd from './Crowd.astro';
+import { asset } from '../lib/url';
+---
+<section class="oche" data-oche aria-label="Live match animation">
+  <div class="o-bg" aria-hidden="true">
+    <img class="o-logo" src={asset('logo.png')} alt="" width="640" height="376" />
+    <i class="o-spot s1"></i><i class="o-spot s2"></i>
+    <div class="embers" data-embers="26"></div>
+    <div class="o-floor"></div>
+  </div>
+
+  <div class="o-stage">
+    <p class="caller d" data-caller aria-live="polite"><span class="sl">Game on!</span></p>
+    <div class="riser">
+      <span class="gerb" data-gerb style="left:-40px"></span>
+      <div class="bwrap" data-board>
+        <Dartboard bare />
+        <div class="darts" data-darts></div>
+        <i class="post" aria-hidden="true"></i>
+      </div>
+      <div class="sb">
+        <div class="sb-top mono"><span><i class="dot"></i>Live exhibition</span><span data-leg>Leg 1 · 501</span></div>
+        <div class="row" data-p="0"><span class="who d">Home</span><span class="last mono" data-last></span><b class="d left" data-left>501</b></div>
+        <div class="row" data-p="1"><span class="who d">Away</span><span class="last mono" data-last></span><b class="d left" data-left>501</b></div>
+        <div class="sb-foot mono">Live draws Wed &amp; Sun 21:30 on Facebook</div>
+      </div>
+      <span class="gerb" data-gerb style="right:-40px"></span>
+    </div>
+  </div>
+
+  <div class="o-crowd" data-crowd><Crowd seed={21} count={42} cards={5} /></div>
+</section>
+
+<script is:inline>
+  (function () {
+    var root = document.querySelector('[data-oche]'); if (!root) return;
+    var board = root.querySelector('[data-board]'), layer = root.querySelector('[data-darts]');
+    var caller = root.querySelector('[data-caller]'), crowd = root.querySelector('[data-crowd]');
+    var rows = root.querySelectorAll('.row'), legEl = root.querySelector('[data-leg]');
+    var order = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+    var visits = [
+      [[20, 1], [20, 3], [20, 1]], [[20, 1], [5, 1], [20, 1]],
+      [[20, 3], [20, 3], [20, 1]], [[20, 3], [20, 3], [20, 3]],
+      [[19, 3], [19, 1], [3, 1]], [[20, 3], [1, 1], [20, 3]],
+      [[20, 3], [20, 3], [20, 3]], [[20, 1], [20, 1], [20, 1]],
+      [[19, 3], [7, 1], [25, 2]], [[18, 3], [18, 1], [4, 1]]
+    ];
+    var ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+    var tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+    function words(n) {
+      if (n >= 100) return 'one hundred' + (n % 100 ? ' and ' + words(n % 100) : '');
+      if (n < 20) return ones[n];
+      return tens[Math.floor(n / 10)] + (n % 10 ? '-' + ones[n % 10] : '');
+    }
+    var rr = function (a, b) { return a + Math.random() * (b - a); };
+    function spot(seg, mult) {
+      var ang, rad;
+      if (seg === 25) { ang = rr(0, 360); rad = mult === 2 ? rr(0, 4) : rr(8, 14); }
+      else {
+        ang = -90 + order.indexOf(seg) * 18 + rr(-5, 5);
+        rad = mult === 3 ? rr(99, 105) : mult === 2 ? rr(162, 168) : (Math.random() < .5 ? rr(45, 85) : rr(118, 150));
+      }
+      var a = ang * Math.PI / 180;
+      return { x: rad * Math.cos(a), y: rad * Math.sin(a) };
+    }
+    var paused = true, wake = null;
+    new IntersectionObserver(function (es) { paused = !es[0].isIntersecting; if (!paused && wake) { wake(); wake = null; } }, { threshold: .2 }).observe(root);
+    function sleep(ms) {
+      return new Promise(function (res) {
+        setTimeout(function go() { if (paused || document.hidden) { wake = go; } else res(); }, ms);
+      });
+    }
+    function say(text, big) {
+      caller.classList.remove('pop', 'big');
+      void caller.offsetWidth;
+      caller.innerHTML = '<span class="sl">' + text + '</span>';
+      caller.classList.add('pop'); if (big) caller.classList.add('big');
+    }
+    var dartSVG = '<svg viewBox="0 0 150 40" width="72" height="20"><path d="M0 20 L18 18.6 L18 21.4Z" fill="#e5e5e5"/><rect x="18" y="15.5" width="52" height="9" rx="3.5" fill="#bdbdbd"/><g stroke="#555" stroke-width="1.2">' +
+      [28, 34, 40, 46, 52, 58].map(function (x) { return '<path d="M' + x + ' 15.5V24.5"/>'; }).join('') +
+      '</g><rect x="18" y="15.5" width="5" height="9" rx="2" fill="#00B050"/><rect x="70" y="18" width="40" height="4" rx="2" fill="#111" stroke="#15D46B"/><path d="M102 20 L132 2 L146 2 L136 20 L146 38 L132 38Z" fill="#15D46B" stroke="#4ADE80"/></svg>';
+    function throwDart(seg, mult) {
+      var W = board.clientWidth, p = spot(seg, mult);
+      var x = (p.x / 480 + .5) * W, y = (p.y / 480 + .5) * W;
+      var el = document.createElement('div'); el.className = 'fd'; el.innerHTML = dartSVG;
+      layer.appendChild(el);
+      var rot = rr(18, 34);
+      el.animate([
+        { transform: 'translate(' + (W * 2.2) + 'px,' + (-W * .45) + 'px) rotate(-12deg) scale(1.7)', opacity: 0 },
+        { opacity: 1, offset: .25 },
+        { transform: 'translate(' + x + 'px,' + y + 'px) rotate(' + rot + 'deg) scale(1)', opacity: 1 }
+      ], { duration: 420, easing: 'cubic-bezier(.25,.7,.35,1)', fill: 'forwards' }).onfinish = function () {
+        el.animate([{ transform: 'translate(' + x + 'px,' + y + 'px) rotate(' + (rot + 4) + 'deg)' }, { transform: 'translate(' + x + 'px,' + y + 'px) rotate(' + rot + 'deg)' }], { duration: 160, fill: 'forwards' });
+        board.classList.remove('thud'); void board.offsetWidth; board.classList.add('thud');
+      };
+      return seg === 25 ? (mult === 2 ? 50 : 25) : seg * mult;
+    }
+    function tween(el, from, to) {
+      var t0 = performance.now();
+      (function step(t) { var k = Math.min(1, (t - t0) / 700); el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); })(t0);
+    }
+    var left = [501, 501], leg = 1;
+    async function run() {
+      await sleep(600);
+      say('Game on!');
+      while (true) {
+        for (var v = 0; v < visits.length; v++) {
+          var p = v % 2, total = 0;
+          rows.forEach(function (r, i) { r.classList.toggle('on', i === p); });
+          await sleep(1100);
+          for (var d = 0; d < 3; d++) { total += throwDart(visits[v][d][0], visits[v][d][1]); await sleep(650); }
+          var max = total === 180;
+          say(max ? 'One hundred and eighty!' : words(total), max);
+          var row = rows[p], from = left[p];
+          left[p] = Math.max(2, left[p] - total);
+          tween(row.querySelector('[data-left]'), from, left[p]);
+          row.querySelector('[data-last]').textContent = total;
+          if (max) {
+            root.classList.add('max'); crowd.classList.add('hype');
+            if (window.V9 && window.V9.burst) window.V9.burst(root, 2800);
+            await sleep(3000);
+            root.classList.remove('max'); crowd.classList.remove('hype');
+          } else await sleep(1500);
+          [].forEach.call(layer.children, function (c) { c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }); });
+          await sleep(300);
+          layer.innerHTML = '';
+        }
+        leg++; left = [501, 501];
+        rows.forEach(function (r) { r.querySelector('[data-left]').textContent = 501; r.querySelector('[data-last]').textContent = ''; });
+        legEl.textContent = 'Leg ' + leg + ' · 501';
+        say('Game on!');
+      }
+    }
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) run();
+  })();
+</script>
+
+<style>
+  .oche { position: relative; height: 500px; overflow: hidden; background: radial-gradient(50% 70% at 50% 30%, rgba(0, 176, 80, .22), transparent 70%), linear-gradient(180deg, #040604, #070a07 60%, #020302); border-top: 1px solid rgba(21, 212, 107, .25); border-bottom: 1px solid rgba(21, 212, 107, .25); }
+  .o-bg { position: absolute; inset: 0; pointer-events: none; }
+  .o-logo { position: absolute; left: 50%; top: 18px; width: min(760px, 90%); height: auto; transform: translateX(-50%) rotate(-4deg); opacity: .13; filter: saturate(.7) drop-shadow(0 0 40px rgba(0, 176, 80, .6)); -webkit-mask: linear-gradient(180deg, #000 40%, transparent 92%); mask: linear-gradient(180deg, #000 40%, transparent 92%); }
+  .o-wall-old { position: absolute; left: 50%; top: 26px; transform: translateX(-50%); display: flex; gap: 60px; white-space: nowrap; font-size: 120px; line-height: 1; color: transparent; -webkit-text-stroke: 1px rgba(21, 212, 107, .14); }
+  .o-spot { position: absolute; top: -40px; width: 260px; height: 420px; background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 85%); clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%); filter: blur(4px); mix-blend-mode: screen; }
+  .s1 { left: calc(50% - 300px); transform: rotate(-16deg); } .s2 { left: calc(50% + 40px); transform: rotate(16deg); }
+  .o-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 200px; background: repeating-linear-gradient(90deg, rgba(21, 212, 107, .08) 0 1px, transparent 1px 70px); transform: perspective(400px) rotateX(60deg); transform-origin: bottom; }
+  .o-stage { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
+  .caller { margin: 0 0 14px; min-height: 52px; font-size: 40px; color: #fff; text-shadow: 0 0 30px rgba(21, 212, 107, .6); text-transform: uppercase; }
+  .caller.pop { animation: call-pop .4s cubic-bezier(.2, .9, .3, 1.4) both; }
+  .caller.big { color: var(--gold); font-size: 56px; text-shadow: 0 0 40px rgba(255, 200, 61, .8); }
+  @keyframes call-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .riser { position: relative; display: flex; align-items: center; gap: 48px; }
+  .bwrap { position: relative; width: 250px; height: 250px; }
+  .bwrap :global(.board-scene) { position: absolute; inset: 0; }
+  .bwrap.thud { animation: thud .14s ease-out; }
+  @keyframes thud { 50% { transform: translateX(1.5px) scale(1.01); } }
+  .post { position: absolute; left: 50%; top: 100%; width: 14px; height: 120px; margin-left: -7px; background: linear-gradient(90deg, #0d0d0d, #2a2a2a, #0d0d0d); z-index: -1; }
+  .darts { position: absolute; inset: 0; z-index: 2; }
+  :global(.fd) { position: absolute; left: 0; top: -10px; width: 72px; height: 20px; transform-origin: 0 50%; pointer-events: none; filter: drop-shadow(0 6px 4px rgba(0, 0, 0, .6)); }
+  :global(.fd svg) { display: block; }
+  .sb { width: 300px; padding: 14px 16px; border-radius: 16px; background: rgba(8, 10, 8, .9); border: 1px solid rgba(21, 212, 107, .35); box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .9); backdrop-filter: blur(6px); }
+  .max .sb { border-color: var(--gold); box-shadow: 0 0 50px -10px rgba(255, 200, 61, .7); }
+  .sb-top, .sb-foot { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .sb-top .dot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--red); animation: v9-pulse 1.4s infinite; }
+  .sb-foot { margin-top: 10px; justify-content: center; }
+  .row { display: grid; grid-template-columns: 1fr auto 86px; gap: 10px; align-items: center; margin-top: 10px; padding: 8px 12px; border-radius: 10px; background: #0d100d; border: 1px solid transparent; transition: border-color .2s, background .2s; }
+  .row.on { border-color: rgba(21, 212, 107, .6); background: rgba(0, 176, 80, .1); }
+  .row.on .who::before { content: ''; display: inline-block; width: 0; height: 0; margin-right: 8px; border: 6px solid transparent; border-left-color: var(--green-hi); border-right: 0; vertical-align: middle; }
+  .who { font-size: 22px; } .last { font-size: 12px; color: var(--gold); }
+  .left { font-size: 40px; text-align: right; }
+  .o-crowd { position: absolute; left: 0; right: 0; bottom: 0; height: 190px; z-index: 3; }
+  .oche :global(.gerb) { bottom: -150px; }
+  @media (max-width: 760px) {
+    .oche { height: 560px; }
+    .riser { flex-direction: column; gap: 22px; }
+    .bwrap { width: 170px; height: 170px; } .post { display: none; }
+    .caller { font-size: 28px; } .caller.big { font-size: 34px; }
+    .sb { width: 290px; }
+    .o-crowd { height: 130px; }
+    .oche :global(.gerb) { display: none; }
+  }
+</style>

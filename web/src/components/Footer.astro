@@ -1,0 +1,36 @@
+---
+import { href, asset } from '../lib/url';
+---
+<footer class="ft">
+  <div class="wrap grid">
+    <div class="brand">
+      <img src={asset('logo.png')} alt="Vault Nine Competitions" width="120" height="70" />
+      <p class="muted">Darts prize competitions run by darts players.</p>
+    </div>
+    <nav aria-label="Compete"><h4 class="mono">Compete</h4><a href={href('competitions')}>Live competitions</a><a href={href('competitions') + '#instant'}>Instant wins</a><a href={href('winners')}>Winners &amp; results</a><a href={href('free-entry')}>Free postal entry</a></nav>
+    <nav aria-label="Help"><h4 class="mono">Help</h4><a href={href('free-entry')}>How it works</a><a href={href('free-entry')}>FAQ</a><span class="muted">hello@vaultninecompetitions.co.uk</span></nav>
+    <nav aria-label="Legal"><h4 class="mono">Legal</h4><a href={href('free-entry')}>Competition terms</a><a href={href('free-entry')}>Privacy &amp; cookies</a><a href={href('free-entry')}>Responsible play</a></nav>
+  </div>
+  <div class="wrap rp">
+    <span class="age">18+</span>
+    <p>Play for fun, within limits you set. Spend limits, cool-off and self-exclusion are in your account. Free, confidential support: <a href="https://www.gamcare.org.uk">GamCare 0808 8020 133</a> · <a href="https://www.begambleaware.org">BeGambleAware</a></p>
+  </div>
+  <div class="wrap legal muted">
+    <span>© 2026 Vault Nine Competitions Ltd · Company no. 16946166</span>
+    <span>Card payments secured by Cashflows</span>
+  </div>
+</footer>
+
+<style>
+  .ft { background: #070807; border-top: 1px solid rgba(21, 212, 107, .2); padding: 56px 0 28px; }
+  .grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 40px; }
+  .brand img { height: 70px; width: auto; margin-bottom: 14px; }
+  nav { display: flex; flex-direction: column; gap: 10px; }
+  nav a, nav span { color: var(--dim); font-size: 15px; }
+  h4 { margin: 0 0 4px; font-size: 12px; letter-spacing: .14em; color: var(--green-hi); text-transform: uppercase; }
+  .rp { display: flex; gap: 16px; align-items: center; margin-top: 40px; padding-top: 20px; padding-bottom: 20px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 14px; background: var(--ink); }
+  .rp p { margin: 0; color: var(--dim); font-size: 14px; line-height: 1.5; }
+  .age { flex: none; display: inline-flex; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #fff; align-items: center; justify-content: center; font-weight: 800; }
+  .legal { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 24px; font-size: 13px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr 1fr; } }
+</style>

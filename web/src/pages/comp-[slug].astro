@@ -1,0 +1,282 @@
+---
+import Base from '../layouts/Base.astro';
+import PrizeArt from '../components/PrizeArt.astro';
+import Countdown from '../components/Countdown.astro';
+import CompCard from '../components/CompCard.astro';
+import { comps as sampleComps, type Comp, money, gbp, fmt, pct } from '../data/comps';
+import { getComp, getComps } from '../lib/data';
+import { href } from '../lib/url';
+
+export function getStaticPaths() {
+  // Used only for the static preview build; in SSR the page loads the comp by slug.
+  return sampleComps.map((c) => ({ params: { slug: c.slug }, props: { c } }));
+}
+interface Props { c?: Comp }
+const c = Astro.props.c ?? (await getComp(Astro.params.slug!));
+if (!c) return new Response('Not found', { status: 404 });
+const comps = await getComps();
+const instant = c.type === 'instant';
+const p = pct(c);
+const circ = 2 * Math.PI * 40;
+const drawDate = new Date(c.drawAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const qtys = instant ? [1, 5, 10, 25, 50, 100] : [1, 5, 10, 25, 50];
+const related = comps.filter((x) => x.slug !== c.slug).slice(0, 4);
+const tiers = ['Premium', 'Darts', 'Accessories', 'Credit'] as const;
+const pricing = { price: c.price, max: c.max, instant, bundles: c.bundles ?? [], buyX: c.buyX ?? null, multiplier: c.multiplier ?? null, slug: c.slug, title: c.title };
+---
+<Base title={c.title} description={c.description} active={instant ? 'instant' : 'competitions'}>
+  <section class:list={['hero', { gold: instant }]}>
+    <div class="beam" aria-hidden="true"></div>
+    <div class="wrap">
+      <nav class="crumbs mono" aria-label="Breadcrumb"><a href={href('')}>Home</a> / <a href={href('competitions')}>Competitions</a> / <span>{c.title}</span></nav>
+      <div class="grid">
+        <div class="media-col">
+          <div class="media">
+            <PrizeArt kind={c.kind} brand={c.brand} amount={c.amount} />
+            <div class="badges">
+              {instant ? <span class="kick" style="background:var(--gold);color:#1a1200;border-color:var(--gold)">Instant win</span> : <span class="kick"><i></i>{c.drawMode === 'auto' ? 'Auto draw' : 'Live draw'} · {drawDate}</span>}
+              {instant && <span class="kick">Reveal: {c.game === 'wheel' ? 'spin the wheel' : 'dartboard throw'}</span>}
+              {!instant && <span class="kick is-gold">Cash alternative</span>}
+            </div>
+          </div>
+          {instant && (
+            <div class="sealed">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#15D46B" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+              <div><b class="d">Prize map sealed at launch</b><span class="muted">Winning tickets placed at random and locked. Fingerprint <span class="mono">a41f…92c0</span>, revealed at close.</span></div>
+            </div>
+          )}
+        </div>
+
+        <div class="buy">
+          <div class="chips">
+            {!instant && <span class="kick" style="background:var(--red);border-color:var(--red)">Ends {drawDate.split(',')[0]}</span>}
+            <span class="kick">Free UK delivery</span><span class="kick">Random tickets</span>
+          </div>
+          <h1 class="d"><span class:list={['sl', instant ? 'gold' : 'g']}>{c.title}</span></h1>
+          <p class="desc">{c.description}</p>
+
+          <div class="price-row">
+            <div class:list={['ptag', { gold: instant }]}>
+              {c.was && <s class="mono">{money(c.was)}</s>}
+              <b>{money(c.price)}</b>
+              <span class="mono">{instant ? 'Per spin' : 'Per entry'}</span>
+            </div>
+            <div class="ring">
+              <svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="40" /><circle cx="48" cy="48" r="40" stroke-dasharray={`${Math.max(3, (p / 100) * circ).toFixed(1)} ${circ.toFixed(1)}`} /></svg>
+              <div><b class="d">{p}%</b><span class="mono">Sold</span></div>
+            </div>
+            <div class="facts mono">
+              {instant ? (
+                <><div><b class="gold">{fmt(c.instantRemaining ?? 0)}</b> <span class="muted">of {fmt(c.instantCount ?? 0)} prizes left</span></div><div><span class="muted">{c.slug === 'target-takeover' ? 'Every ticket wins' : 'Instant prizes'}</span></div></>
+              ) : (
+                <><div><b>{fmt(c.sold)}</b> <span class="muted">of {fmt(c.max)} sold</span></div><div><b class="gold">1 in {fmt(c.max)}</b> <span class="muted">per ticket</span></div></>
+              )}
+            </div>
+          </div>
+
+          {instant && c.endPrize && (
+            <div class="endprize">
+              <div><span class="mono">End prize · auto draw {drawDate}</span><b class="d">{c.endPrize}</b><small class="muted">Every ticket also goes in the final draw.</small></div>
+            </div>
+          )}
+          <Countdown to={c.drawAt} size="lg" tone={instant ? 'gold' : 'green'} />
+
+          <form class="picker" id="picker">
+            <div class="ph"><span class="d">{instant ? 'How many spins?' : 'How many tickets?'}</span><span class="mono muted">No limit per person</span></div>
+            <div class="qtys" style={`grid-template-columns:repeat(${qtys.length},1fr)`} role="group" aria-label="Quantity">
+              {qtys.map((q, i) => <button type="button" class="q" data-q={q} aria-pressed={q === 10 ? 'true' : 'false'}>{q}</button>)}
+            </div>
+            {pricing.bundles.length > 0 && (
+              <div class="tiers" role="group" aria-label="Bundles">
+                {pricing.bundles.map((b, i) => (
+                  <button type="button" class="tier" data-tier={i} aria-pressed="false">{b.tag && <em class="mono">{b.tag}</em>}<b class="d">{b.tickets} tickets</b><span class="mono">{gbp(b.price)}</span></button>
+                ))}
+              </div>
+            )}
+            {(c.buyX || c.multiplier) && (
+              <div class:list={['deal', { gold: instant }]}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" /></svg>
+                <span><b class="d" id="deal-title"></b> <span class="muted" id="deal-text"></span></span>
+              </div>
+            )}
+            <div class="total">
+              <div><span class="mono muted">You get</span><b class="d" id="t-tickets"></b><span class="mono" id="t-odds"></span></div>
+              <div class="r"><span class="mono muted">Total</span><b class="d" id="t-total"></b></div>
+            </div>
+            <div class="cta">
+              <button type="submit" class:list={['btn', instant ? 'btn-gold' : 'btn-green']}>{instant ? 'Spin to win' : 'Enter now'}</button>
+              <a class="btn btn-ghost" href={href('free-entry')}>Free entry</a>
+            </div>
+            <p class="fine muted">Ticket numbers are assigned at random when you pay. 18+, UK only. Your spend limits apply.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {instant ? (
+    <section class="sec" id="ledger">
+      <div class="wrap">
+        <div class="sec-head">
+          <div><span class="kick is-gold">Live prize ledger</span><h2 class="d"><span class="sl">Still</span> <span class="sl gold">up for grabs</span></h2></div>
+          <div class="filters" role="group" aria-label="Prize type">
+            <button type="button" class="chip" aria-pressed="true" data-tierf="All">All</button>
+            {tiers.map((t) => <button type="button" class="chip" aria-pressed="false" data-tierf={t}>{t}</button>)}
+          </div>
+        </div>
+        <div class="vault">
+          {(c.instantPrizes ?? []).map((pz) => (
+            <article class:list={['vc', pz.tier.toLowerCase()]} data-tier={pz.tier}>
+              {pz.tier === 'Premium' && <span class="top mono">Top prize</span>}
+              <h3 class="d">{pz.name}</h3>
+              <div class="cnt"><b class="d">{fmt(pz.left)}</b><span class="mono muted">of {fmt(pz.total)} left</span></div>
+              <i><b style={`width:${Math.round((pz.left / pz.total) * 100)}%`}></b></i>
+              <span class="mono muted won">{fmt(pz.total - pz.left)} won so far</span>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  ) : (
+    <section class="sec" style="padding-top:24px">
+      <div class="wrap details">
+        <div class="panel spec">
+          <h2 class="d"><span class="sl">The details</span></h2>
+          <dl>
+            <div><dt class="muted">Cash alternative</dt><dd class="mono gold">[£ value]</dd></div>
+            <div><dt class="muted">Max tickets</dt><dd class="mono">{fmt(c.max)}</dd></div>
+            <div><dt class="muted">Draw</dt><dd>{c.drawMode === 'auto' ? 'Automatic, on the minute' : 'Live on Facebook'}</dd></div>
+            <div><dt class="muted">If not sold out</dt><dd>Still drawn on the date</dd></div>
+            <div><dt class="muted">Ticket numbers</dt><dd>Random</dd></div>
+          </dl>
+        </div>
+        <div class="panel how">
+          <h2 class="d"><span class="sl">How the draw works</span></h2>
+          <ol>
+            <li><b class="d g">01</b><span>At close we seal the entry list and lock in a secret seed, and publish fingerprints of both.</span></li>
+            <li><b class="d g">02</b><span>{c.drawMode === 'auto' ? 'The engine draws automatically at the closing time.' : `Drawn live on Facebook, ${drawDate}.`}</span></li>
+            <li><b class="d g">03</b><span>We reveal the seed so anyone can re-run the draw and land on the same ticket.</span></li>
+          </ol>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <section class="sec" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head"><div><span class="kick">More on the oche</span><h2 class="d"><span class="sl">You might</span> <span class="sl g">also like</span></h2></div></div>
+      <div class="cards">{related.map((x) => <CompCard c={x} />)}</div>
+    </div>
+  </section>
+</Base>
+
+<script is:inline define:vars={{ pricing }}>
+  (function () {
+    var state = { q: 10, tier: -1 };
+    var fmt = function (v) { return '£' + v.toFixed(2); };
+    var nf = function (n) { return n.toLocaleString('en-GB'); };
+    function calc() {
+      var base = state.tier >= 0 ? pricing.bundles[state.tier].tickets : state.q;
+      var cost = state.tier >= 0 ? pricing.bundles[state.tier].price : state.q * pricing.price;
+      var bonus = pricing.buyX && base >= pricing.buyX.buy ? Math.floor(base / pricing.buyX.buy) * pricing.buyX.free : 0;
+      var tickets = base + bonus;
+      var mult = pricing.multiplier && base >= pricing.multiplier.from ? pricing.multiplier.times : 1;
+      return { base: base, cost: cost, bonus: bonus, tickets: tickets, mult: mult };
+    }
+    function render() {
+      var r = calc();
+      document.querySelectorAll('[data-q]').forEach(function (b) { b.setAttribute('aria-pressed', state.tier < 0 && +b.dataset.q === state.q ? 'true' : 'false'); });
+      document.querySelectorAll('[data-tier]').forEach(function (b) { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', +b.dataset.tier === state.tier ? 'true' : 'false'); });
+      document.getElementById('t-tickets').textContent = r.tickets + (pricing.instant ? ' spins' : ' tickets');
+      document.getElementById('t-total').textContent = fmt(r.cost);
+      document.getElementById('t-odds').textContent = pricing.instant ? (r.tickets * r.mult) + ' end-prize entries' : r.tickets + ' in ' + nf(pricing.max) + ' chance';
+      var dt = document.getElementById('deal-title'), dx = document.getElementById('deal-text');
+      if (dt && pricing.buyX) { dt.textContent = r.bonus ? '+' + r.bonus + ' free tickets' : 'Buy ' + pricing.buyX.buy + ', get ' + pricing.buyX.free + ' free'; dx.textContent = r.bonus ? 'Deal applied' : 'Pick ' + pricing.buyX.buy + ' or more to unlock'; }
+      else if (dt && pricing.multiplier) { dt.textContent = r.mult > 1 ? 'End-prize entries ×' + r.mult : 'Buy ' + pricing.multiplier.from + '+, end-prize entries ×' + pricing.multiplier.times; dx.textContent = r.mult > 1 ? 'Multiplier applied' : 'Ticket multiplier'; }
+    }
+    document.querySelectorAll('[data-q]').forEach(function (b) { b.addEventListener('click', function () { state.q = +b.dataset.q; state.tier = -1; render(); }); });
+    document.querySelectorAll('button[data-tier]').forEach(function (b) { b.addEventListener('click', function () { var i = +b.dataset.tier; state.tier = state.tier === i ? -1 : i; render(); }); });
+    document.getElementById('picker').addEventListener('submit', function (e) { e.preventDefault(); var r = calc(); window.V9.add(pricing.slug, pricing.title, r.cost / r.tickets, r.tickets); });
+    document.querySelectorAll('[data-tierf]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var f = b.dataset.tierf;
+        document.querySelectorAll('[data-tierf]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        document.querySelectorAll('.vc').forEach(function (v) { v.hidden = !(f === 'All' || v.dataset.tier === f); });
+      });
+    });
+    render();
+  })();
+</script>
+
+<style>
+  .hero { position: relative; overflow: hidden; padding: 24px 0 72px; background: radial-gradient(45% 60% at 25% 35%, rgba(0, 176, 80, .25), transparent 70%), var(--ink); }
+  .hero.gold { background: radial-gradient(45% 60% at 25% 40%, rgba(255, 200, 61, .18), transparent 70%), radial-gradient(40% 60% at 85% 20%, rgba(0, 176, 80, .2), transparent 70%), var(--ink); border-bottom: 1px solid rgba(255, 200, 61, .2); }
+  .beam { position: absolute; left: 14%; top: -200px; width: 220px; height: 900px; background: linear-gradient(180deg, rgba(21, 212, 107, .3), transparent); transform: rotate(14deg); filter: blur(18px); pointer-events: none; }
+  .crumbs { position: relative; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 22px; }
+  .crumbs a { color: var(--muted); } .crumbs span { color: #fff; }
+  .grid { position: relative; display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: start; }
+  .grid > * { min-width: 0; }
+  .media-col { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 170px; }
+  .media { position: relative; border-radius: 26px; overflow: hidden; border: 1px solid rgba(21, 212, 107, .35); box-shadow: 0 50px 120px -40px rgba(0, 176, 80, .7); }
+  .gold .media { border-color: rgba(255, 200, 61, .5); box-shadow: 0 50px 120px -40px rgba(255, 200, 61, .6); }
+  .badges { position: absolute; top: 18px; left: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .sealed { display: flex; gap: 14px; align-items: center; padding: 16px 18px; border-radius: 16px; background: #0b0d0b; border: 1px solid rgba(21, 212, 107, .3); }
+  .sealed div { display: flex; flex-direction: column; gap: 4px; font-size: 13px; } .sealed b { font-size: 18px; }
+  .buy { display: flex; flex-direction: column; gap: 20px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  h1 { font-size: clamp(56px, 7vw, 96px); }
+  .desc { margin: 0; color: var(--dim); font-size: 17px; line-height: 1.55; }
+  .price-row { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .ptag { padding: 10px 20px 8px; border-radius: 14px; background: var(--green); color: #04140b; transform: skewX(-8deg); box-shadow: 0 18px 50px -14px rgba(0, 176, 80, .9); }
+  .ptag.gold { background: linear-gradient(180deg, var(--gold-hi), var(--gold-lo)); color: #1a1200; box-shadow: 0 18px 50px -14px rgba(255, 200, 61, .8); }
+  .ptag s { font-size: 13px; font-weight: 700; opacity: .7; } .ptag b { display: block; font: 400 58px/1 var(--font-display); } .ptag span { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  .ring { position: relative; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 8; stroke: rgba(255, 255, 255, .1); } .ring circle + circle { stroke: var(--green-hi); stroke-linecap: round; }
+  .gold .ring circle + circle { stroke: var(--gold); }
+  .ring b { display: block; font-size: 26px; } .ring span { font-size: 9px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+  .facts { font-size: 14px; line-height: 1.9; }
+  .endprize { padding: 18px 20px; border-radius: 18px; background: #0b0d0b; border: 1px solid rgba(21, 212, 107, .35); }
+  .endprize div { display: flex; flex-direction: column; gap: 6px; } .endprize span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--green-soft); } .endprize b { font-size: 24px; } .endprize small { font-size: 13px; }
+  .picker { padding: 22px; border-radius: 22px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 16px; }
+  .ph { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; } .ph .d { font-size: 26px; } .ph .mono { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .qtys { display: grid; gap: 8px; }
+  .q { min-height: 56px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .14); background: #0b0d0b; color: #fff; font: 400 24px var(--font-display); cursor: pointer; }
+  .q[aria-pressed="true"] { background: #fff; color: var(--ink); border-color: #fff; }
+  .gold .q[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #1a1200; }
+  .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .tier { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .14); background: #0b0d0b; color: #fff; cursor: pointer; text-align: left; }
+  .tier[aria-pressed="true"] { border-color: var(--gold); background: rgba(255, 200, 61, .08); box-shadow: 0 0 0 1px var(--gold) inset; }
+  .tier b { font-size: 22px; } .tier span { font-size: 13px; font-weight: 700; color: var(--gold); }
+  .tier em { position: absolute; top: -10px; right: 10px; font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; background: var(--gold); color: #1a1200; }
+  .deal { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 14px; background: rgba(0, 176, 80, .1); border: 1px dashed rgba(21, 212, 107, .6); color: var(--green-hi); }
+  .deal.gold { background: rgba(255, 200, 61, .08); border-color: rgba(255, 200, 61, .6); color: var(--gold); }
+  .deal b { font-size: 18px; } .deal .muted { font-size: 14px; }
+  .total { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+  .total div { display: flex; flex-direction: column; } .total .r { text-align: right; align-items: flex-end; }
+  .total .mono { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+  #t-tickets { font-size: 32px; } #t-total { font-size: 52px; line-height: 1; }
+  #t-odds { color: var(--gold); font-size: 13px; letter-spacing: 0; text-transform: none; }
+  .cta { display: grid; grid-template-columns: 1.5fr 1fr; gap: 10px; }
+  .fine { margin: 0; font-size: 12px; line-height: 1.5; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  .vault { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+  .vc { position: relative; padding: 18px; border-radius: 18px; background: #0b0d0b; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+  .vc[hidden] { display: none; }
+  .vc.premium { background: linear-gradient(160deg, #2a2108, #0b0d0b 60%); border-color: rgba(255, 200, 61, .6); box-shadow: 0 30px 70px -30px rgba(255, 200, 61, .6); }
+  .vc.darts { border-color: rgba(21, 212, 107, .3); }
+  .vc .top { align-self: flex-start; padding: 4px 9px; border-radius: 6px; background: var(--gold); color: #1a1200; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .vc h3 { font-size: 22px; line-height: 1.05; }
+  .cnt { display: flex; align-items: baseline; justify-content: space-between; margin-top: auto; } .cnt b { font-size: 40px; } .cnt span { font-size: 12px; }
+  .vc.premium .cnt b { color: var(--gold); } .vc.darts .cnt b { color: var(--green-soft); } .vc.credit .cnt b { color: var(--muted); }
+  .vc i { display: block; height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+  .vc i b { display: block; height: 100%; background: var(--green-hi); } .vc.premium i b { background: var(--gold); } .vc.credit i b { background: var(--muted); }
+  .won { font-size: 11px; }
+  .details { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; }
+  .spec, .how { padding: 30px; } .spec h2, .how h2 { font-size: 40px; margin-bottom: 18px; }
+  dl { margin: 0; } dl div { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); } dt, dd { margin: 0; } dd { font-weight: 700; }
+  ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+  ol li { display: flex; gap: 16px; align-items: baseline; color: var(--dim); line-height: 1.6; } ol b { font-size: 34px; }
+  @media (max-width: 1060px) { .grid, .details { grid-template-columns: 1fr; } .media-col { position: static; } }
+  @media (max-width: 760px) { h1 { font-size: 52px; } .tiers { grid-template-columns: 1fr; } .qtys { grid-template-columns: repeat(3, 1fr) !important; } #t-total { font-size: 40px; } }
+</style>

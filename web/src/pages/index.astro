@@ -1,0 +1,516 @@
+---
+import Base from '../layouts/Base.astro';
+import CompCard from '../components/CompCard.astro';
+import PrizeArt from '../components/PrizeArt.astro';
+import Countdown from '../components/Countdown.astro';
+import { categories, fmt, money } from '../data/comps';
+import { getComps, getWinners } from '../lib/data';
+const [comps, winners] = await Promise.all([getComps(), getWinners()]);
+import { href, compHref, asset } from '../lib/url';
+
+const featured = comps.find((c) => c.type === 'instant') ?? comps[0];
+const instants = comps.filter((c) => c.type === 'instant');
+const standard = comps.filter((c) => c.type === 'standard');
+const ending = standard.slice(0, 4);
+const instantPrizes = instants.reduce((t, c) => t + (c.instantCount ?? 0), 0);
+const quickPool = comps.filter((c) => c.price <= 2).slice(0, 4).map((c) => ({ slug: c.slug, title: c.title, price: c.price, max: c.type === 'instant' ? 0 : c.max }));
+const tilt = [-3, 2, -1.5, 3, -2, 1.5];
+const lights = [
+  { x: 6, c: 'rgba(21,212,107,.5)', t: 7, d: 0, from: -28, to: 18 },
+  { x: 20, c: 'rgba(255,255,255,.34)', t: 9, d: -3, from: 20, to: -22 },
+  { x: 34, c: 'rgba(255,200,61,.36)', t: 8, d: -1, from: -18, to: 24 },
+  { x: 50, c: 'rgba(21,212,107,.5)', t: 6, d: -2, from: -14, to: 14 },
+  { x: 66, c: 'rgba(255,200,61,.36)', t: 8, d: -5, from: 24, to: -18 },
+  { x: 80, c: 'rgba(255,255,255,.34)', t: 9, d: -4, from: -22, to: 20 },
+  { x: 94, c: 'rgba(21,212,107,.5)', t: 7, d: -2, from: 18, to: -28 },
+];
+const gerbs = [5, 14, 86, 95];
+const pinned = comps.filter((c) => c.featured);
+const slides = (pinned.length ? pinned : comps).slice(0, 4);
+const steps = [
+  { n: '01', t: 'Pick your prize', d: 'Choose a comp and your tickets. Bundles, Buy X get Y and multipliers get you more for less.' },
+  { n: '02', t: 'Get your numbers', d: 'Random ticket numbers land in your account the moment you pay. Instant wins reveal straight away.' },
+  { n: '03', t: 'Watch the draw', d: 'Live on Facebook or automatically on the minute, with a public proof for every result.' },
+];
+---
+<Base title="Win premium darts gear" active="home">
+  <!-- HERO: the main stage -->
+  <section class="show" data-show>
+    <div class="s-bg" aria-hidden="true">
+      <div class="led"><img class="led-logo" src={asset('logo.png')} alt="" width="640" height="376" /></div>
+      <div class="truss"></div>
+      <div class="lights">
+        {lights.map((l) => <i class="mh" style={`--x:${l.x}%;--c:${l.c};--t:${l.t}s;--d:${l.d}s;--from:${l.from}deg;--to:${l.to}deg`}><b></b></i>)}
+      </div>
+      <div class="haze hz1"></div><div class="haze hz2"></div>
+      <div class="embers" data-embers="46"></div>
+      <div class="s-floor"></div>
+      {gerbs.map((x) => <span class="gerb" data-gerb style={`left:${x}%`}></span>)}
+      <div class="s-fade"></div>
+    </div>
+
+    <div class="wrap s-in">
+      <div class="s-top">
+        <span class="kick"><i></i>Live · {comps.length} comps open · next draw Wed 21:30</span>
+        <h1 class="d"><span class="sl">Game</span> <span class="sl g">on.</span></h1>
+        <p class="tag">Darts, boards and auto-scorers from the brands you throw. Tickets from <b class="gold mono">25p</b>.</p>
+      </div>
+
+      <div class="slides" data-slides>
+        {slides.map((c, i) => {
+          const inst = c.type === 'instant';
+          const p = Math.round((c.sold / c.max) * 100);
+          return (
+            <article class:list={['slide', { 'is-on': i === 0, inst }]} data-slide={i} aria-hidden={i === 0 ? 'false' : 'true'}>
+              <div class="s-info">
+                <div class="s-tags">
+                  {inst ? <span class="kick is-gold" style="background:var(--gold);color:#1a1200;border-color:var(--gold)">Instant win</span> : <span class="kick"><i></i>{c.drawMode === 'auto' ? 'Auto draw' : 'Live draw'}</span>}
+                  {inst ? <span class="kick is-gold">{fmt(c.instantRemaining ?? 0)} prizes left</span> : <span class="kick is-gold">Cash alternative</span>}
+                </div>
+                <h2 class="d"><span class:list={['sl', inst ? 'gold' : '']}>{c.title}</span></h2>
+                <div class="s-price">
+                  <div class:list={['ptag', { gold: inst }]}>{c.was && <s class="mono">{money(c.was)}</s>}<b>{money(c.price)}</b><span class="mono">{inst ? 'Per spin' : 'Per entry'}</span></div>
+                  <div class="s-meter">
+                    <div class="mono"><b>{p}%</b> sold · {fmt(c.max - c.sold)} left</div>
+                    <div class="bar"><span style={`width:${Math.max(3, p)}%`}></span></div>
+                  </div>
+                </div>
+                <Countdown to={c.drawAt} size="md" tone={inst ? 'gold' : 'green'} />
+                <div class="s-cta">
+                  <a class:list={['btn', inst ? 'btn-gold' : 'btn-green']} href={compHref(c.slug)}>{inst ? 'Spin to win' : 'Enter now'} →</a>
+                  <button type="button" class="btn plus5" data-add={c.slug} data-title={c.title} data-price={c.price} data-qty="5" aria-label={`Quick add 5 to ${c.title}`}>+5</button>
+                </div>
+              </div>
+              <a class="s-art" href={compHref(c.slug)} tabindex="-1">
+                <span class="s-ring" aria-hidden="true"></span>
+                <span class="s-frame"><PrizeArt kind={c.kind} brand={c.brand} amount={c.amount} /><i class="shine" aria-hidden="true"></i></span>
+              </a>
+            </article>
+          );
+        })}
+      </div>
+
+      <div class="rail">
+        <button type="button" class="rbtn" data-step="-1" aria-label="Previous">‹</button>
+        <div class="thumbs">
+          {slides.map((c, i) => (
+            <button type="button" class:list={['thumb', { on: i === 0, inst: c.type === 'instant' }]} data-go={i}>
+              <span class="tart"><PrizeArt kind={c.kind} brand={c.brand} amount={c.amount} /></span>
+              <span class="ttx"><b class="d">{c.title}</b><span class="mono">{money(c.price)}</span></span>
+              <i class="tbar"></i>
+            </button>
+          ))}
+        </div>
+        <button type="button" class="rbtn" data-step="1" aria-label="Next">›</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTANT STRIP + QUICK TILES -->
+  <section class="quick">
+    <div class="wrap">
+      {featured?.type === 'instant' && (
+        <a class="strip" href={compHref(featured.slug)}>
+          <span class="num gold">{fmt(featured.instantRemaining ?? 0)}</span>
+          <span class="strip-txt"><span class="kick is-gold"><i></i>Live</span><span class="d"><span class="sl">Instant prizes still up for grabs</span></span><span class="muted">Across {featured.title}. Every ticket wins something.</span></span>
+          <span class="btn btn-gold btn-sm">Win one now →</span>
+        </a>
+      )}
+      <div class="qtiles">
+        <a class="qt" href={href('competitions')}><b class="d">{comps.length}</b><span class="d">All comps</span><small class="mono g">Live now</small><span class="qa" aria-hidden="true"><PrizeArt kind="board" brand="All" /></span></a>
+        <a class="qt hot" href={href('competitions') + '#ending'}><b class="d">{standard.length}</b><span class="d">Ending soon</span><small class="mono" style="color:#ff8a8a">Wed 21:30</small><span class="qa" aria-hidden="true"><PrizeArt kind="box" brand="Soon" /></span></a>
+        <a class="qt" href={href('competitions') + '#penny'}><b class="d">{comps.filter((c) => c.price < 1).length}</b><span class="d">Penny plays</span><small class="mono g">From 25p</small><span class="qa" aria-hidden="true"><PrizeArt kind="darts" brand="25p" /></span></a>
+        <a class="qt gold-t" href={href('competitions') + '#instant'}><b class="d">{instants.length}</b><span class="d">Instant wins</span><small class="mono gold">{fmt(instantPrizes)} prizes</small><span class="qa" aria-hidden="true"><PrizeArt kind="ring" brand="Win" /></span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ENDING SOON -->
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><span class="kick" style="color:#ff8a8a;border-color:rgba(255,59,59,.5)"><i></i>Drawn Wed 21:30</span><h2 class="d"><span class="sl">Last</span> <span class="sl red">orders</span></h2></div>
+        <div style="min-width:260px"><Countdown to={ending[0].drawAt} size="sm" seconds={false} /></div>
+      </div>
+      <div class="cards">{ending.map((c) => <CompCard c={c} />)}</div>
+    </div>
+  </section>
+
+  <!-- INSTANT ARCADE -->
+  <section class="sec arcade" id="instant">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><span class="kick is-gold">Instant win arcade</span><h2 class="d"><span class="sl">Win it</span> <span class="sl gold">on the spot</span></h2></div>
+        <p class="muted" style="max-width:440px;margin:0;line-height:1.6">Winning tickets are placed at random and sealed before launch. Pay, then throw, spin or flip to find out what you've won.</p>
+      </div>
+      <div class="arcade-grid">
+        {instants.map((w) => (
+          <article class="panel panel-gold game">
+            <a href={compHref(w.slug)} class="game-art"><PrizeArt kind={w.kind} brand={w.brand} /><span class="kick is-gold game-tag">{w.game === 'wheel' ? 'Spin the wheel' : 'Dartboard throw'}</span></a>
+            <div class="game-body">
+              <h3 class="d"><span class="sl">{w.title}</span></h3>
+              <div class="mono" style="font-size:13px;color:var(--dim)"><b class="gold" style="font-size:18px">{fmt(w.instantRemaining ?? 0)}</b> of {fmt(w.instantCount ?? 0)} prizes left · {money(w.price)} a go</div>
+              <ul class="ladder">
+                {(w.instantPrizes ?? []).slice(0, 3).map((p) => (
+                  <li><div><span>{p.name}</span><span class="mono gold">{p.left} / {p.total}</span></div><i><b style={`width:${Math.round((p.left / p.total) * 100)}%`}></b></i></li>
+                ))}
+              </ul>
+              <a class="btn btn-gold btn-sm" href={compHref(w.slug)}>Play now</a>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ALL COMPS -->
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><div><span class="kick is-green"><i style="background:var(--green-hi)"></i>{comps.length} live now</span><h2 class="d"><span class="sl">Pick your</span> <span class="sl g">prize</span></h2></div></div>
+      <div class="filters" role="group" aria-label="Filter competitions">
+        <button type="button" class="chip" aria-pressed="true" data-filter="All">All</button>
+        {categories.map((c) => <button type="button" class="chip" aria-pressed="false" data-filter={c}>{c}</button>)}
+      </div>
+      <div class="cards" id="grid">{comps.map((c) => <CompCard c={c} />)}</div>
+      <div style="display:flex;justify-content:center;margin-top:36px"><a class="btn btn-ghost" href={href('competitions')}>See every competition</a></div>
+    </div>
+  </section>
+
+  <!-- QUICK PICK -->
+  <section class="sec" style="padding-top:0">
+    <div class="wrap">
+      <div class="panel panel-gold qp">
+        <div class="qp-l">
+          <span class="kick is-gold">Quick pick</span>
+          <h2 class="d"><span class="sl">Set a budget.</span><br /><span class="sl gold">We'll fill the board.</span></h2>
+          <p class="muted">Pick how much to spend and we'll spread whole tickets across tonight's comps for the best mix of odds. You review it before paying.</p>
+          <div class="amts" role="group" aria-label="Budget">
+            {[5, 10, 20, 50].map((v) => <button type="button" class="amt" aria-pressed={v === 10 ? 'true' : 'false'} data-amt={v}>£{v}</button>)}
+          </div>
+        </div>
+        <div class="qp-r">
+          <div class="mono muted" style="font-size:12px;letter-spacing:.14em">YOUR SPREAD · <span id="qp-budget">£10</span></div>
+          <ul id="qp-list"></ul>
+          <div class="qp-tot"><span class="mono" id="qp-tix"></span><span class="d" id="qp-spent" style="font-size:34px"></span></div>
+          <button type="button" class="btn btn-green" id="qp-add">Add spread to basket</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CREW -->
+  <section class="sec crew">
+    <div class="wrap crew-grid">
+      <div class="hosts">
+        {[['Liam', 'Host · draws'], ['Whisk', 'Host · banter'], ['Simon', 'Host · unboxings']].map(([n, r], i) => (
+          <figure class="host" style={i === 1 ? 'transform:translateY(-24px)' : ''}>
+            <div class="host-ph"><svg viewBox="0 0 120 150" aria-hidden="true"><circle cx="60" cy="52" r="26" fill="#1C221C" stroke="#15D46B" stroke-width="2" /><path d="M14 150c4-34 22-52 46-52s42 18 46 52z" fill="#1C221C" stroke="#15D46B" stroke-width="2" /></svg><span class="mono">Host photo</span></div>
+            <figcaption><b class="d">{n}</b><span class="mono muted">{r}</span></figcaption>
+          </figure>
+        ))}
+      </div>
+      <div class="crew-copy">
+        <span class="kick"><i></i>Live on Facebook</span>
+        <h2 class="d"><span class="sl">Pull up a stool.</span><br /><span class="sl g">We draw live.</span></h2>
+        <p>The V9 crew draws every live comp in the Facebook group on Wednesday and Sunday nights at 21:30. Banter, unboxings, and every winning ticket checked on screen against its proof.</p>
+        <div class="ctas"><a class="btn btn-green btn-sm" href="https://www.facebook.com/vaultninecompetitions">Join 4,200+ in the group</a><a class="btn btn-ghost btn-sm" href={href('winners')}>Past results</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROOF -->
+  <section class="sec">
+    <div class="wrap">
+      <div class="panel panel-glow proof">
+        <div class="proof-l">
+          <span class="kick is-green">Verity draw proof</span>
+          <h2 class="d"><span class="sl">Every draw comes</span><br /><span class="sl g">with a receipt.</span></h2>
+          <p>Before a draw we seal the entry list and lock in a secret seed. After it, we reveal the seed, so anyone can re-run the draw and land on the same ticket. Other sites ask you to trust them. We show the maths.</p>
+          <div class="ctas"><a class="btn btn-green btn-sm" href={href('winners')}>See a proof</a><a class="btn btn-ghost btn-sm" href={href('winners')}>Check my ticket</a></div>
+        </div>
+        <div class="proof-r">
+          <div class="mono muted" style="font-size:12px;letter-spacing:.14em">PICK YOUR BOARD · DRAW #458 · EXAMPLE</div>
+          <div class="row"><span class="muted">Entries sealed</span><span class="mono">999 tickets</span></div>
+          <div class="row"><span class="muted">Entry list fingerprint</span><span class="mono">9f2c…e41a</span></div>
+          <div class="row"><span class="muted">Seed locked</span><span class="mono">3b7d…08c5</span></div>
+          <div class="row win"><span class="d" style="font-size:22px">Winning ticket</span><span class="d g" style="font-size:52px">#0417</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WINNERS WALL -->
+  <section class="sec" style="padding-top:24px;overflow:hidden">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><span class="kick is-gold">The wall</span><h2 class="d"><span class="sl">Real</span> <span class="sl gold">winners</span></h2></div>
+        <div style="text-align:right"><div class="d gold" style="font-size:76px"><span class="sl">457</span></div><div class="mono muted" style="font-size:12px;letter-spacing:.14em">DRAWS · 170 DIFFERENT WINNERS · <a href={href('winners')}>ALL RESULTS →</a></div></div>
+      </div>
+      <div class="wall">
+        {winners.slice(0, 6).map((w, i) => (
+          <figure class="polaroid" style={`transform:rotate(${tilt[i]}deg)`}>
+            <div class="ph"><span class="d">{w.name.split(' ').map((s) => s[0]).join('')}</span><em class="mono">Winner photo</em><strong class="mono">Verified</strong></div>
+            <figcaption><b class="d">{w.name}</b><span>{w.prize}</span><small class="mono">Ticket {w.ticket}</small></figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW -->
+  <section class="sec" style="padding-top:24px">
+    <div class="wrap">
+      <div class="sec-head"><div><span class="kick">Three darts</span><h2 class="d"><span class="sl">How it</span> <span class="sl g">works</span></h2></div></div>
+      <div class="steps">
+        {steps.map((s) => (
+          <div class="panel step">
+            <span class="bgnum d" aria-hidden="true">{s.n}</span>
+            <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="26" fill="#0F120F" stroke="#15D46B" stroke-width="2" /><circle cx="28" cy="28" r="17" fill="none" stroke="#FF3B3B" stroke-width="3" stroke-dasharray="6 4" /><circle cx="28" cy="28" r="6" fill="#15D46B" /><path d="M30 26 L50 6" stroke="#E4E4E7" stroke-width="3" stroke-linecap="round" /><path d="M46 4 L54 2 L52 10 Z" fill="#FFC83D" /></svg>
+            <h3 class="d">{s.t}</h3>
+            <p class="muted">{s.d}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- FREE ENTRY + CLUB -->
+  <section class="sec" style="padding-top:0">
+    <div class="wrap duo">
+      <div class="panel free">
+        <span class="kick" style="color:#a7f3d0;border-color:rgba(167,243,208,.4)">No purchase necessary</span>
+        <h2 class="d"><span class="sl">Enter free</span> <span class="sl" style="color:#4ade80">by post</span></h2>
+        <p>Every comp. Same random ticket, same chance as paid. No limit per person.</p>
+        <a class="btn btn-white btn-sm" href={href('free-entry')}>How to enter by post</a>
+      </div>
+      <div class="panel club">
+        <span class="kick">Join the club</span>
+        <h2 class="d"><span class="sl">Codes before</span> <span class="sl gold">anyone else</span></h2>
+        <form id="club"><label for="em" class="sr">Email address</label><input id="em" type="email" placeholder="Your email" required /><button class="btn btn-green btn-sm" type="submit">Get early access</button></form>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script is:inline>
+  (function () {
+    var show = document.querySelector('[data-show]'); if (!show) return;
+    var slides = show.querySelectorAll('[data-slide]'), thumbs = show.querySelectorAll('[data-go]'), i = 0;
+    function go(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach(function (s, k) { s.classList.toggle('is-on', k === i); s.setAttribute('aria-hidden', k === i ? 'false' : 'true'); });
+      thumbs.forEach(function (t, k) { t.classList.remove('on'); void t.offsetWidth; t.classList.toggle('on', k === i); });
+      if (window.V9 && window.V9.burst) window.V9.burst(show, 1600);
+    }
+    thumbs.forEach(function (t) {
+      t.addEventListener('click', function () { go(+t.dataset.go); });
+      t.querySelector('.tbar').addEventListener('animationend', function () { if (t.classList.contains('on')) go(i + 1); });
+    });
+    show.querySelectorAll('[data-step]').forEach(function (b) { b.addEventListener('click', function () { go(i + +b.dataset.step); }); });
+    setTimeout(function () { if (window.V9 && window.V9.burst) window.V9.burst(show, 3200); }, 200);
+  })();
+</script>
+
+<script is:inline define:vars={{ quickPool }}>
+  // Category filter
+  document.querySelectorAll('[data-filter]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var f = b.dataset.filter;
+      document.querySelectorAll('[data-filter]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      document.querySelectorAll('#grid > article').forEach(function (card) { card.hidden = !(f === 'All' || card.dataset.cat === f); });
+    });
+  });
+  // Quick pick
+  var amt = 10, picks = [];
+  function money(v) { return '£' + v.toFixed(2); }
+  function spread() {
+    var left = amt, n = quickPool.map(function () { return 0; }), moved = true;
+    while (moved) { moved = false; quickPool.forEach(function (c, i) { if (left + 1e-9 >= c.price) { n[i]++; left -= c.price; moved = true; } }); }
+    picks = quickPool.map(function (c, i) { return { c: c, n: n[i] }; }).filter(function (p) { return p.n > 0; });
+    document.getElementById('qp-budget').textContent = '£' + amt;
+    document.getElementById('qp-list').innerHTML = picks.map(function (p) {
+      var odds = p.c.max ? p.n + ' in ' + p.c.max.toLocaleString('en-GB') : p.n + ' instant spins';
+      return '<li><b class="d">×' + p.n + '</b><div><strong>' + p.c.title + '</strong><small class="mono muted">' + odds + '</small></div><span class="mono">' + money(p.n * p.c.price) + '</span></li>';
+    }).join('');
+    document.getElementById('qp-tix').textContent = n.reduce(function (a, b) { return a + b; }, 0) + ' tickets';
+    document.getElementById('qp-spent').textContent = money(amt - left);
+  }
+  document.querySelectorAll('[data-amt]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      amt = parseInt(b.dataset.amt, 10);
+      document.querySelectorAll('[data-amt]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      spread();
+    });
+  });
+  document.getElementById('qp-add').addEventListener('click', function () {
+    picks.forEach(function (p) { window.V9.add(p.c.slug, p.c.title, p.c.price, p.n); });
+    window.V9.toast('Spread added to your basket');
+  });
+  spread();
+  document.getElementById('club').addEventListener('submit', function (e) { e.preventDefault(); window.V9.toast("You're on the list. Codes coming soon."); e.target.reset(); });
+</script>
+
+<style>
+  /* ---------- Main stage hero ---------- */
+  .show { position: relative; overflow: hidden; padding: 34px 0 120px; background: radial-gradient(70% 55% at 50% 0%, rgba(0, 176, 80, .22), transparent 70%), linear-gradient(180deg, #030503, #050805 55%, #020302); }
+  .s-bg { position: absolute; inset: 0; pointer-events: none; }
+  .led { position: absolute; left: 50%; top: 70px; width: min(1180px, 92%); height: 430px; transform: translateX(-50%); border-radius: 18px; overflow: hidden; background: radial-gradient(circle, rgba(21, 212, 107, .18) 1.2px, transparent 1.6px) 0 0 / 7px 7px, linear-gradient(180deg, rgba(0, 60, 25, .35), rgba(0, 20, 8, .2)); border: 1px solid rgba(21, 212, 107, .14); box-shadow: 0 0 120px -20px rgba(0, 176, 80, .35); opacity: .75; -webkit-mask: linear-gradient(180deg, #000 55%, transparent); mask: linear-gradient(180deg, #000 55%, transparent); }
+  .led-logo { position: absolute; left: 50%; top: 52%; width: 74%; height: auto; transform: translate(-50%, -50%) rotate(-4deg); opacity: .16; filter: saturate(.8) drop-shadow(0 0 60px rgba(0, 176, 80, .7)); animation: led-glow 6s ease-in-out infinite alternate; }
+  @keyframes led-glow { to { opacity: .24; transform: translate(-50%, -50%) rotate(-4deg) scale(1.03); } }
+  .led-run { position: absolute; top: 50%; display: flex; white-space: nowrap; transform: translateY(-50%); font-size: 210px; line-height: 1; color: rgba(21, 212, 107, .1); animation: v9-marquee 40s linear infinite; }
+  .truss { position: absolute; left: 0; right: 0; top: 0; height: 22px; background: repeating-linear-gradient(60deg, transparent 0 12px, rgba(255, 255, 255, .09) 12px 14px), repeating-linear-gradient(-60deg, transparent 0 12px, rgba(255, 255, 255, .09) 12px 14px), linear-gradient(180deg, #1b1d1b, #0b0c0b); border-bottom: 2px solid #2b2e2b; box-shadow: 0 10px 30px rgba(0, 0, 0, .8); z-index: 2; }
+  .lights { position: absolute; inset: 0; z-index: 1; }
+  .mh { position: absolute; left: var(--x); top: 14px; width: 0; height: 0; }
+  .mh::before { content: ''; position: absolute; left: -170px; top: 0; width: 340px; height: 1000px; background: linear-gradient(180deg, var(--c), transparent 78%); clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); transform-origin: 50% 0; filter: blur(5px); mix-blend-mode: screen; animation: mh-sweep var(--t) ease-in-out var(--d) infinite alternate; }
+  .mh b { position: absolute; left: -13px; top: -4px; width: 26px; height: 20px; border-radius: 6px 6px 12px 12px; background: linear-gradient(180deg, #2b2b2b, #0c0c0c); box-shadow: 0 8px 22px 4px var(--c); }
+  @keyframes mh-sweep { from { transform: rotate(var(--from)); opacity: .55; } 50% { opacity: 1; } to { transform: rotate(var(--to)); opacity: .7; } }
+  .haze { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .5; }
+  .hz1 { left: -10%; bottom: 10%; width: 60%; height: 50%; background: rgba(0, 176, 80, .25); animation: haze 18s ease-in-out infinite alternate; }
+  .hz2 { right: -10%; bottom: 0; width: 55%; height: 45%; background: rgba(255, 200, 61, .1); animation: haze 22s ease-in-out -6s infinite alternate-reverse; }
+  @keyframes haze { to { transform: translate(12%, -8%) scale(1.15); } }
+  .s-floor { position: absolute; left: -10%; right: -10%; bottom: 0; height: 170px; background: linear-gradient(180deg, rgba(21, 212, 107, .7), rgba(21, 212, 107, 0) 3px), repeating-linear-gradient(90deg, rgba(21, 212, 107, .12) 0 1px, transparent 1px 90px), linear-gradient(180deg, rgba(0, 176, 80, .12), #020302); transform: perspective(500px) rotateX(55deg); transform-origin: bottom; }
+  .show .gerb { bottom: 120px; }
+  .show .gerb::after { display: none; }
+  .s-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: linear-gradient(180deg, transparent, #040604); }
+  .s-in { position: relative; z-index: 4; }
+  .s-top { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; margin-bottom: 26px; }
+  .s-top h1 { font-size: clamp(72px, 9vw, 132px); line-height: .88; text-shadow: 0 0 60px rgba(0, 176, 80, .45); }
+  .tag { margin: 0; color: var(--dim); font-size: 18px; }
+  .slides { position: relative; display: grid; max-width: 1120px; margin: 0 auto; }
+  .slide > * { min-width: 0; }
+  .slide { grid-area: 1 / 1; display: grid; grid-template-columns: 1.15fr .85fr; gap: 40px; align-items: center; padding: 30px 40px; border-radius: 30px; background: linear-gradient(135deg, rgba(10, 14, 10, .82), rgba(5, 8, 5, .6)); border: 1px solid rgba(21, 212, 107, .4); box-shadow: 0 50px 140px -50px rgba(0, 176, 80, .75), inset 0 1px 0 rgba(255, 255, 255, .06); backdrop-filter: blur(6px); opacity: 0; visibility: hidden; transform: translateY(14px) scale(.985); transition: opacity .5s, transform .6s cubic-bezier(.2, .8, .2, 1), visibility 0s .5s; }
+  .slide.inst { border-color: rgba(255, 200, 61, .5); box-shadow: 0 50px 140px -50px rgba(255, 200, 61, .55), inset 0 1px 0 rgba(255, 255, 255, .06); }
+  .slide.is-on { opacity: 1; visibility: visible; transform: none; transition: opacity .5s, transform .6s cubic-bezier(.2, .8, .2, 1); }
+  .s-info { display: flex; flex-direction: column; gap: 18px; }
+  .s-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .s-info h2 { font-size: clamp(46px, 5vw, 76px); }
+  .s-price { display: flex; align-items: center; gap: 18px; }
+  .ptag { padding: 8px 18px 6px; border-radius: 14px; background: var(--green); color: #04140b; transform: skewX(-8deg); box-shadow: 0 18px 50px -14px rgba(0, 176, 80, .9); }
+  .ptag.gold { background: linear-gradient(180deg, var(--gold-hi), var(--gold-lo)); color: #1a1200; box-shadow: 0 18px 50px -14px rgba(255, 200, 61, .8); }
+  .ptag s { font-size: 12px; font-weight: 700; opacity: .7; } .ptag b { display: block; font: 400 50px/1 var(--font-display); } .ptag span { font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  .s-meter { flex: 1; font-size: 13px; color: var(--dim); }
+  .bar { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .1); overflow: hidden; margin-top: 8px; }
+  .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--green), var(--green-hi)); }
+  .inst .bar span { background: linear-gradient(90deg, var(--gold-lo), var(--gold-hi)); }
+  .s-cta { display: flex; gap: 10px; } .s-cta .btn:first-child { flex: 1; }
+  .plus5 { background: rgba(21, 212, 107, .1); border: 1px solid var(--green-hi); color: var(--green-hi); padding: 0 20px; }
+  .inst .plus5 { background: rgba(255, 200, 61, .1); border-color: var(--gold); color: var(--gold); }
+  .s-art { position: relative; display: block; aspect-ratio: 1; width: 100%; max-width: 400px; justify-self: end; }
+  .s-ring { position: absolute; inset: -4%; border-radius: 50%; background: conic-gradient(from 0deg, transparent, rgba(21, 212, 107, .6), transparent 30%, rgba(255, 200, 61, .5), transparent 60%); filter: blur(24px); animation: v9-spin 9s linear infinite; }
+  .s-frame { position: relative; display: block; height: 100%; border-radius: 24px; overflow: hidden; border: 1px solid rgba(21, 212, 107, .45); box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .9); animation: s-float 6s ease-in-out infinite alternate; }
+  .inst .s-frame { border-color: rgba(255, 200, 61, .6); }
+  .shine { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, .22) 50%, transparent 65%); transform: translateX(-120%); animation: shine 5s ease-in-out 1s infinite; }
+  @keyframes s-float { to { transform: translateY(-10px) rotate(.6deg); } }
+  @keyframes shine { 0%, 60% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+  .rail { display: flex; align-items: center; gap: 12px; max-width: 1120px; margin: 22px auto 0; }
+  .thumbs { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .rbtn { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .2); background: rgba(10, 12, 10, .8); color: #fff; font-size: 26px; line-height: 1; cursor: pointer; }
+  .rbtn:hover { border-color: var(--green-hi); color: var(--green-hi); }
+  .thumb { position: relative; display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(10, 12, 10, .85); color: #fff; text-align: left; cursor: pointer; overflow: hidden; transition: border-color .2s, transform .2s; }
+  .thumb:hover { transform: translateY(-2px); }
+  .thumb.on { border-color: var(--green-hi); } .thumb.inst.on { border-color: var(--gold); }
+  .tart { flex: none; width: 46px; height: 46px; border-radius: 9px; overflow: hidden; }
+  .ttx { display: flex; flex-direction: column; min-width: 0; } .ttx b { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ttx .mono { font-size: 12px; font-weight: 700; color: var(--green-hi); } .thumb.inst .ttx .mono { color: var(--gold); }
+  .tbar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--green-hi); transform: scaleX(0); transform-origin: left; }
+  .thumb.inst .tbar { background: var(--gold); }
+  .thumb.on .tbar { animation: tbar 7s linear forwards; }
+  [data-show]:has(.slides:hover) .thumb.on .tbar { animation-play-state: paused; }
+  @keyframes tbar { to { transform: scaleX(1); } }
+
+  .quick { padding: 24px 0 0; }
+  .strip { display: flex; align-items: center; gap: 22px; padding: 18px 22px; border-radius: 22px; background: linear-gradient(90deg, rgba(255, 200, 61, .12), rgba(10, 12, 10, .9) 40%); border: 1px solid rgba(255, 200, 61, .45); color: #fff; flex-wrap: wrap; }
+  .strip:hover { color: #fff; border-color: var(--gold); }
+  .num { font: 400 64px/1 var(--font-display); }
+  .strip-txt { flex: 1 1 260px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .strip-txt .d { font-size: 30px; }
+  .qtiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 16px; }
+  .qt { position: relative; overflow: hidden; min-height: 136px; padding: 18px; border-radius: 20px; background: var(--panel); border: 1px solid rgba(255, 255, 255, .1); color: #fff; display: flex; flex-direction: column; gap: 4px; transition: border-color .2s, transform .2s; }
+  .qt:hover { color: #fff; border-color: var(--green-hi); transform: translateY(-3px); }
+  .qt.hot { border-color: rgba(255, 59, 59, .4); } .qt.gold-t { border-color: rgba(255, 200, 61, .45); }
+  .qt b { font-size: 42px; position: relative; z-index: 1; } .qt > span.d { font-size: 20px; position: relative; z-index: 1; } .qt small { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; position: relative; z-index: 1; }
+  .qa { position: absolute; right: -16px; bottom: -22px; width: 124px; transform: rotate(-10deg); border-radius: 16px; overflow: hidden; opacity: .9; }
+
+  .arcade { background: radial-gradient(50% 60% at 20% 30%, rgba(255, 200, 61, .12), transparent 70%), radial-gradient(50% 60% at 90% 80%, rgba(0, 176, 80, .16), transparent 70%), #070807; border-top: 1px solid rgba(255, 200, 61, .2); border-bottom: 1px solid rgba(255, 200, 61, .2); }
+  .arcade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .game { overflow: hidden; display: grid; grid-template-columns: .9fr 1.1fr; }
+  .game-art { position: relative; display: block; border-right: 1px solid rgba(255, 255, 255, .06); }
+  .game-tag { position: absolute; top: 12px; left: 12px; background: rgba(5, 5, 5, .8); }
+  .game-body { padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+  .game-body h3 { font-size: 34px; }
+  .ladder { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 9px; }
+  .ladder div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; }
+  .ladder i { display: block; height: 4px; border-radius: 99px; background: rgba(255, 255, 255, .08); margin-top: 5px; overflow: hidden; }
+  .ladder b { display: block; height: 100%; background: var(--gold); }
+  .game-body .btn { margin-top: auto; }
+
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+
+  .qp { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+  .qp-l { padding: 44px; display: flex; flex-direction: column; gap: 18px; }
+  .qp-l .kick { align-self: flex-start; } .qp-l h2 { font-size: clamp(40px, 5vw, 58px); } .qp-l p { margin: 0; line-height: 1.6; }
+  .amts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .amt { min-height: 64px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .14); background: #0b0d0b; color: #fff; font: 400 26px var(--font-display); cursor: pointer; }
+  .amt[aria-pressed="true"] { border-color: var(--gold); background: rgba(255, 200, 61, .12); color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+  .qp-r { padding: 44px; background: #060706; border-left: 1px solid rgba(255, 255, 255, .06); display: flex; flex-direction: column; gap: 12px; }
+  .qp-r :global(ul) { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+  .qp-r :global(li) { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; background: var(--panel-2); border: 1px solid rgba(255, 255, 255, .06); }
+  .qp-r :global(li b) { font-size: 26px; color: var(--green-hi); min-width: 46px; }
+  .qp-r :global(li div) { flex: 1; display: flex; flex-direction: column; }
+  .qp-r :global(li small) { font-size: 12px; }
+  .qp-tot { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .08); color: var(--dim); }
+
+  .crew { background: radial-gradient(60% 80% at 50% 0%, rgba(255, 59, 59, .1), transparent 70%), #070707; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .crew-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
+  .hosts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .host { margin: 0; border-radius: 18px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); }
+  .host-ph { position: relative; aspect-ratio: 3 / 4; background: radial-gradient(70% 60% at 50% 35%, rgba(0, 176, 80, .35), transparent 70%), #0c0f0c; display: flex; align-items: flex-end; justify-content: center; }
+  .host-ph svg { width: 78%; } .host-ph span { position: absolute; top: 10px; left: 10px; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .45); }
+  .host figcaption { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; } .host b { font-size: 24px; } .host figcaption span { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .crew-copy { display: flex; flex-direction: column; gap: 20px; } .crew-copy .kick { align-self: flex-start; } .crew-copy h2 { font-size: clamp(42px, 5vw, 64px); } .crew-copy p { margin: 0; color: var(--dim); line-height: 1.6; font-size: 17px; }
+
+  .proof { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+  .proof-l { padding: 48px; display: flex; flex-direction: column; gap: 20px; } .proof-l .kick { align-self: flex-start; } .proof-l h2 { font-size: clamp(40px, 5vw, 60px); } .proof-l p { margin: 0; color: var(--dim); font-size: 17px; line-height: 1.6; }
+  .proof-r { padding: 48px; background: #060706; border-left: 1px solid rgba(255, 255, 255, .06); display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--panel-2); }
+  .row.win { padding: 18px; border: 1px solid var(--green-hi); background: rgba(0, 176, 80, .08); box-shadow: 0 0 40px -10px rgba(21, 212, 107, .5); }
+
+  .wall { display: flex; gap: 22px; padding: 10px 4px 24px; overflow-x: auto; }
+  .polaroid { flex: none; width: 210px; margin: 0; padding: 10px; border-radius: 10px; background: #f4f1e8; box-shadow: 0 24px 50px -20px rgba(0, 0, 0, .9); transition: transform .25s; }
+  .polaroid:hover { transform: rotate(0) scale(1.04) !important; }
+  .ph { position: relative; aspect-ratio: 4 / 5; border-radius: 8px; overflow: hidden; background: radial-gradient(80% 70% at 50% 30%, #173823, #0a0c0a); display: flex; align-items: center; justify-content: center; }
+  .ph .d { font-size: 64px; color: rgba(21, 212, 107, .6); }
+  .ph em { position: absolute; bottom: 8px; left: 8px; font-style: normal; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .4); }
+  .ph strong { position: absolute; top: 8px; right: 8px; padding: 4px 8px; border-radius: 6px; background: var(--green-hi); color: #04140b; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+  .polaroid figcaption { padding: 12px 4px 4px; display: flex; flex-direction: column; gap: 4px; }
+  .polaroid b { font-size: 20px; color: #0a0a0a; } .polaroid figcaption span { font-size: 13px; color: #3f3f46; line-height: 1.35; } .polaroid small { font-size: 11px; color: #00873d; font-weight: 700; text-transform: uppercase; }
+
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .step { position: relative; overflow: hidden; padding: 30px; display: flex; flex-direction: column; gap: 14px; }
+  .bgnum { position: absolute; right: -10px; top: -30px; font-size: 160px; color: rgba(21, 212, 107, .07); }
+  .step h3 { font-size: 30px; } .step p { margin: 0; line-height: 1.6; }
+
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .free, .club { padding: 44px; display: flex; flex-direction: column; gap: 18px; align-items: flex-start; }
+  .free { background: linear-gradient(135deg, var(--green-deep), #062b18); border-color: rgba(21, 212, 107, .45); }
+  .free h2, .club h2 { font-size: clamp(40px, 4.5vw, 56px); } .free p { margin: 0; color: #d1fae5; line-height: 1.6; }
+  #club { display: flex; gap: 10px; flex-wrap: wrap; width: 100%; }
+  #club input { flex: 1 1 220px; min-height: 46px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .18); background: var(--ink); color: #fff; padding: 0 16px; font: 500 16px var(--font-body); }
+
+  @media (max-width: 1060px) {
+    .slide { grid-template-columns: 1fr; padding: 26px; gap: 24px; } .s-art { max-width: 460px; width: 100%; margin: 0 auto; order: -1; }
+    .crew-grid, .proof, .qp, .duo, .arcade-grid { grid-template-columns: 1fr; }
+    .thumbs { grid-template-columns: repeat(4, 1fr); } .ttx { display: none; } .thumb { justify-content: center; }
+    .proof-r, .qp-r { border-left: 0; border-top: 1px solid rgba(255, 255, 255, .06); }
+  }
+  @media (max-width: 760px) {
+    .qtiles { grid-template-columns: 1fr 1fr; }
+    .steps { grid-template-columns: 1fr; }
+    .game { grid-template-columns: 1fr; }
+    .game-art { border-right: 0; }
+    .show { padding-bottom: 80px; } .show .gerb { display: none; } .mh:nth-child(even) { display: none; } .slide { padding: 18px; } .s-art { max-width: 280px; } .s-top h1 { font-size: 80px; }
+    .s-info h2 { font-size: 42px; } .ptag b { font-size: 40px; } .rbtn { display: none; }
+    .feat { position: relative; width: 100%; }
+    .qp-l, .qp-r, .proof-l, .proof-r, .free, .club { padding: 26px; }
+    .hosts { gap: 8px; }
+  }
+</style>

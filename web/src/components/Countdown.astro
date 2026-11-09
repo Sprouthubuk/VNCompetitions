@@ -1,0 +1,45 @@
+---
+// Live countdown to a UTC timestamp. Ticks client-side; renders a server value first.
+interface Props { to: string; size?: 'sm' | 'md' | 'lg'; tone?: 'green' | 'gold'; seconds?: boolean }
+const { to, size = 'md', tone = 'green', seconds = true } = Astro.props;
+const now = new Date('2026-11-09T08:00:00Z').getTime(); // build-time placeholder; script corrects it
+const diff = Math.max(0, new Date(to).getTime() - now) / 1000;
+const parts = [
+  ['DAYS', Math.floor(diff / 86400)],
+  ['HRS', Math.floor((diff % 86400) / 3600)],
+  ['MINS', Math.floor((diff % 3600) / 60)],
+  ['SECS', Math.floor(diff % 60)],
+].slice(0, seconds ? 4 : 3) as [string, number][];
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+<div class={`cd cd-${size} cd-${tone}`} data-countdown={to} role="timer" aria-label="Time left">
+  {parts.map(([l, v]) => (
+    <div class="tile"><b data-part={l}>{pad(v)}</b><span>{l}</span></div>
+  ))}
+</div>
+
+<style>
+  .cd { display: flex; gap: 8px; }
+  .cd .tile { flex: 1; min-width: 0; }
+  .cd-sm .tile { height: 58px; } .cd-sm b { font-size: 22px; } .cd-sm span { font-size: 8px; }
+  .cd-md .tile { height: 72px; } .cd-md b { font-size: 32px; }
+  .cd-lg .tile { height: 88px; } .cd-lg b { font-size: 42px; }
+  .cd-gold .tile { background: #120f06; border-color: rgba(255, 200, 61, .3); }
+  .cd-gold span { color: var(--gold); }
+</style>
+
+<script is:inline>
+  (function () {
+    if (window.__v9cd) return; window.__v9cd = true;
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    function tick() {
+      var now = Date.now();
+      document.querySelectorAll('[data-countdown]').forEach(function (el) {
+        var d = Math.max(0, new Date(el.getAttribute('data-countdown')).getTime() - now) / 1000;
+        var v = { DAYS: Math.floor(d / 86400), HRS: Math.floor((d % 86400) / 3600), MINS: Math.floor((d % 3600) / 60), SECS: Math.floor(d % 60) };
+        el.querySelectorAll('[data-part]').forEach(function (b) { b.textContent = pad(v[b.getAttribute('data-part')]); });
+      });
+    }
+    tick(); setInterval(tick, 1000);
+  })();
+</script>

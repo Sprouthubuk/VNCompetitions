@@ -1,0 +1,111 @@
+---
+import Base from '../layouts/Base.astro';
+import PrizeArt from '../components/PrizeArt.astro';
+import { getWinners } from '../lib/data';
+const winners = await getWinners();
+import { href } from '../lib/url';
+const kinds = ['darts', 'box', 'darts', 'darts', 'darts', 'darts', 'darts', 'board'] as const;
+const brands = ['Target', 'Harrows', 'Winmau', 'Target', 'Red Dragon', 'Unicorn', 'Shot', 'Winmau'];
+const tilt = [-3, 2, -1.5, 3, -2, 1.5, -2.5, 2];
+const results = winners.map((w, i) => ({ ...w, proof: ['7f3a…e1c9', '2b81…40da', 'c0d4…9a77', '91ee…3f02', '5a6c…d118', 'e7b0…6c4a', '3d29…a0f5', 'b4f8…71e3'][i] }));
+---
+<Base title="Winners and draw results" active="winners">
+  <section class="hero">
+    <div class="wrap head">
+      <div>
+        <span class="kick is-gold"><i></i>Every draw, public proof</span>
+        <h1 class="d"><span class="sl">Real</span> <span class="sl gold">winners.</span></h1>
+        <p class="lead">Every result is listed here with a proof you can check. Re-run any draw yourself and land on the same ticket.</p>
+      </div>
+      <div class="stats">
+        <div class="tile"><b class="d gold">457</b><span class="mono muted">Draws</span></div>
+        <div class="tile"><b class="d g">170</b><span class="mono muted">Different winners</span></div>
+        <div class="tile"><b class="d">3,973</b><span class="mono muted">Instant wins paid</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" style="padding-top:8px">
+    <div class="wrap">
+      <form class="panel panel-glow check" id="check">
+        <div><h2 class="d"><span class="sl">Check my ticket</span></h2><p class="muted">Enter your ticket number to see if it won. Try 143.</p></div>
+        <label class="sr" for="tk">Ticket number</label>
+        <input id="tk" inputmode="numeric" placeholder="Ticket no. e.g. 143" />
+        <button class="btn btn-green" type="submit">Check</button>
+        <p id="check-msg" class="mono msg" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><div><span class="kick">This week</span><h2 class="d"><span class="sl">The</span> <span class="sl g">wall</span></h2></div></div>
+      <div class="wall">
+        {winners.map((w, i) => (
+          <figure class="polaroid" style={`transform:rotate(${tilt[i]}deg)`}>
+            <div class="ph"><PrizeArt kind={kinds[i]} brand={brands[i]} /></div>
+            <figcaption><b class="d">{w.name}</b><span>{w.prize}</span><span class="mono">{w.ticket}{w.date && ` · ${w.date}`}</span></figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head"><div><span class="kick">Results</span><h2 class="d"><span class="sl">Draw</span> <span class="sl g">ledger</span></h2></div></div>
+      <div class="panel tbl">
+        <table>
+          <thead><tr><th>Winner</th><th>Prize</th><th>Ticket</th><th>Date</th><th>Proof</th></tr></thead>
+          <tbody>
+            {results.map((r) => (
+              <tr><td><b>{r.name}</b></td><td class="muted">{r.prize}</td><td class="mono g">{r.ticket}</td><td class="mono muted">{r.date || 'Live on Facebook'}</td><td><button type="button" class="proof mono" data-proof={r.proof}>{r.proof} ↗</button></td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="muted note">Sample results from the live site. Proof hashes are placeholders until the new draw engine goes live. <a href={href('competitions')}>Enter the next draw →</a></p>
+    </div>
+  </section>
+</Base>
+
+<script is:inline>
+  (function () {
+    var hits = { '143': 'Craig Baker · Star Wars Target Mandalorian 26g', '9': 'Toby Shears · £150 Harrows mystery box', '171': 'McKenzie Vetier · Ryan Searle GEO darts 32g', '126': 'Jamie Guest · Target Rove darts 23g' };
+    document.getElementById('check').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = document.getElementById('tk').value.replace(/\D/g, ''), m = document.getElementById('check-msg');
+      m.hidden = false;
+      if (hits[v]) { m.textContent = 'Ticket #' + v + ' won: ' + hits[v]; m.className = 'mono msg gold'; }
+      else { m.textContent = v ? 'Ticket #' + v + ' didn’t win this time.' : 'Enter a ticket number.'; m.className = 'mono msg muted'; }
+    });
+    document.querySelectorAll('[data-proof]').forEach(function (b) { b.addEventListener('click', function () { window.V9.toast('Proof ' + b.dataset.proof + ': seed, entry list and re-run tool open here'); }); });
+  })();
+</script>
+
+<style>
+  .hero { padding: 56px 0 32px; background: radial-gradient(40% 60% at 20% 30%, rgba(255, 200, 61, .16), transparent 70%), var(--ink); }
+  .head { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: end; }
+  h1 { font-size: clamp(64px, 9vw, 130px); margin: 14px 0; }
+  .lead { margin: 0; color: var(--dim); font-size: 18px; line-height: 1.6; max-width: 540px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stats .tile { padding: 20px; display: flex; flex-direction: column; gap: 6px; } .stats b { font-size: 52px; line-height: 1; } .stats span { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+  .check { padding: 24px 28px; display: grid; grid-template-columns: 1fr 260px auto; gap: 16px; align-items: center; }
+  .check h2 { font-size: 34px; } .check p { margin: 4px 0 0; }
+  .check input { min-height: 56px; padding: 0 16px; border-radius: 12px; background: #050605; border: 1px solid rgba(255, 255, 255, .18); color: #fff; font: 600 18px var(--font-mono); }
+  .msg { grid-column: 1 / -1; margin: 0; font-size: 14px; }
+  .wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 28px 22px; padding: 10px 0; }
+  .polaroid { margin: 0; padding: 10px; border-radius: 10px; background: #f4f1e8; box-shadow: 0 24px 50px -20px rgba(0, 0, 0, .9); transition: transform .25s; }
+  .polaroid:hover { transform: rotate(0) scale(1.04) !important; }
+  .ph { border-radius: 6px; overflow: hidden; }
+  .polaroid figcaption { padding: 12px 4px 4px; display: flex; flex-direction: column; gap: 4px; color: #1c1c1c; font-size: 14px; }
+  .polaroid b { font-size: 22px; } .polaroid .mono { font-size: 12px; color: #00813b; font-weight: 700; }
+  .tbl { padding: 8px 20px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 720px; }
+  th, td { padding: 14px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 15px; }
+  th { font: 400 16px var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  .proof { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(21, 212, 107, .4); background: transparent; color: var(--green-soft); font-size: 12px; cursor: pointer; }
+  .note { font-size: 13px; margin-top: 14px; }
+  @media (max-width: 1060px) { .head { grid-template-columns: 1fr; } .check { grid-template-columns: 1fr; } }
+</style>
