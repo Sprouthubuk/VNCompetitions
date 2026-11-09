@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum Category: string
 {
+    use HasLabels;
     use HasValues;
 
     case InstantWin = 'instant_win';

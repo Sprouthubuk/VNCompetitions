@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum PrizeTier: string
 {
+    use HasLabels;
     use HasValues;
 
     case Premium = 'premium';
